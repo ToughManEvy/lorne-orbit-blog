@@ -342,7 +342,8 @@ function renderAdminTools() {
   document.querySelector("#admin-session-tools").hidden = !loggedIn;
   const migrationButton = document.querySelector("#legacy-migrate-button");
   const migrationDone = localStorage.getItem(LEGACY_MIGRATION_KEY) === window.BLOG_CONFIG?.API_URL;
-  migrationButton.hidden = !loggedIn || migrationDone;
+  const hasLegacyPosts = getCustomPosts().length > 0;
+  migrationButton.hidden = !loggedIn || migrationDone || (!hasLegacyPosts && allArticles.length > 0);
   document.body.classList.toggle("admin-authenticated", loggedIn);
 }
 
