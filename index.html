@@ -1,0 +1,237 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#f2e4cd" />
+    <meta name="description" content="Lorne's orbit——一个野心勃勃，一个向自我生长的浩瀚新论。" />
+    <title>Lorne's orbit · 个人博客</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body data-view="home">
+    <div class="reading-progress" aria-hidden="true"></div>
+
+    <header class="topbar">
+      <div class="topbar-inner">
+        <button class="mobile-menu" type="button" aria-label="打开菜单" aria-expanded="false">
+          <span></span><span></span><span></span>
+        </button>
+        <nav class="top-nav" aria-label="主导航">
+          <a class="active" href="#home">首页</a>
+          <a href="#articles">文章列表</a>
+          <a href="#message">留言板</a>
+          <a href="#about">关于</a>
+        </nav>
+        <div class="admin-tools" id="admin-tools">
+          <button class="admin-login-button" id="admin-login-button" type="button">管理员登录</button>
+          <div class="admin-session-tools" id="admin-session-tools" hidden>
+            <a href="#write">写文章</a>
+            <a href="#manage">文章管理</a>
+            <button id="legacy-migrate-button" type="button" hidden>迁移旧文章</button>
+            <button id="admin-logout-button" type="button">退出</button>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <div class="floating-nav" id="floating-nav" aria-hidden="true">
+      <nav class="journal-nav" aria-label="悬浮博客导航">
+        <a class="active" href="#home">首页</a>
+        <a href="#articles">文章列表</a>
+        <a href="#message">留言板</a>
+        <a href="#about">关于</a>
+      </nav>
+      <button class="search-button" type="button" aria-label="搜索文章">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.7"></circle><path d="m16 16 4.2 4.2"></path></svg>
+      </button>
+    </div>
+
+    <main id="home">
+      <section class="hero" aria-labelledby="site-title">
+        <div class="hero-content">
+          <h1 id="site-title">Lorne's orbit</h1>
+          <p class="hero-subtitle">一个野心勃勃，一个向自我生长的浩瀚新论</p>
+        </div>
+      </section>
+
+      <div class="journal-nav-wrap">
+        <nav class="journal-nav" aria-label="博客导航">
+          <a class="active" href="#home">首页</a>
+          <a href="#articles">文章列表</a>
+          <a href="#message">留言板</a>
+          <a href="#about">关于</a>
+        </nav>
+        <button class="search-button" type="button" aria-label="搜索文章">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.7"></circle><path d="m16 16 4.2 4.2"></path></svg>
+        </button>
+      </div>
+
+      <section class="content-shell" id="articles" aria-labelledby="articles-title">
+        <div class="section-heading">
+          <div>
+            <h2 id="articles-title">近来所记</h2>
+          </div>
+          <p class="article-count"><span id="article-count">8</span> 篇文字</p>
+        </div>
+
+        <div class="category-tabs" role="group" aria-label="文章分类筛选">
+          <button class="active" type="button" data-category="全部">全部</button>
+          <button type="button" data-category="杂谈集">杂谈集</button>
+          <button type="button" data-category="往事如烟">往事如烟</button>
+          <button type="button" data-category="心情日记">心情日记</button>
+          <button type="button" data-category="逆水行舟">逆水行舟</button>
+        </div>
+
+        <section class="archive-page" id="archive-page" aria-labelledby="archive-title">
+          <nav class="archive-breadcrumb" aria-label="面包屑导航">
+            <a href="#home">首页</a><span>›</span><span>文章列表</span>
+          </nav>
+          <h2 id="archive-title">文章列表</h2>
+          <div class="archive-years" id="archive-years" aria-label="按年份跳转"></div>
+          <div class="archive-groups" id="archive-groups"></div>
+        </section>
+
+        <div class="featured-slot" id="featured-slot"></div>
+        <div class="article-grid" id="article-grid"></div>
+
+        <nav class="pagination" id="pagination" aria-label="文章分页">
+          <button class="page-direction" id="prev-page" type="button"><span>←</span> 上一页</button>
+          <div class="page-numbers" id="page-numbers"></div>
+          <button class="page-direction" id="next-page" type="button">下一页 <span>→</span></button>
+        </nav>
+
+        <div class="empty-state" id="empty-state" hidden>
+          <span>☁</span>
+          <h3>没有找到这篇文字</h3>
+          <p>换个关键词试试吧，或许它正藏在另一页里。</p>
+        </div>
+      </section>
+
+      <section class="message-section" id="message" aria-labelledby="message-title">
+        <div class="message-copy">
+          <h2 id="message-title">有话写在风里</h2>
+          <p>如果某一段文字与你不期而遇，欢迎留下只言片语。陌生人的共鸣，也是生活赠予的小小回声。</p>
+          <div class="local-message-list" id="local-message-list" aria-live="polite"></div>
+        </div>
+        <div class="message-side">
+          <form class="message-form" id="message-form">
+            <label>
+              <span>你的称呼</span>
+              <input type="text" name="name" placeholder="一位路过的朋友" maxlength="20" />
+            </label>
+            <label>
+              <span>想说的话</span>
+              <textarea name="message" placeholder="写下此刻的心情……" maxlength="180" required></textarea>
+            </label>
+            <button type="submit">把话留在这里 <span>→</span></button>
+          </form>
+          <p class="local-only-note">留言将公开保存到博客服务器</p>
+        </div>
+      </section>
+
+      <section class="about-section" id="about" aria-labelledby="about-title">
+        <div class="about-card">
+          <div>
+            <h2 id="about-title">关于这个小站</h2>
+            <p>这是一个收集生活碎片的地方。没有宏大的命题，只记录四季三餐、旧日回声、偶尔低落的夜晚，以及每一次仍想向前走的瞬间。</p>
+          </div>
+          <blockquote>“且将新火试新茶，诗酒趁年华。”</blockquote>
+        </div>
+      </section>
+
+      <section class="single-post" id="single-post" aria-live="polite"></section>
+
+      <section class="admin-write-view" id="admin-write-view" aria-labelledby="write-title">
+        <nav class="admin-breadcrumb"><a href="#home">首页</a><span>›</span><span>撰写博客</span></nav>
+        <header class="admin-page-heading">
+          <div><p>ADMIN EDITOR</p><h2 id="write-title">撰写新的博客</h2></div>
+          <a href="#manage">管理已有文章 →</a>
+        </header>
+        <form class="post-editor-form" id="post-editor-form">
+          <div class="editor-meta-row">
+            <label><span>文章标题</span><input type="text" name="title" maxlength="100" placeholder="在这里写下标题" required /></label>
+            <label><span>选择分类</span><select name="category" required><option value="杂谈集">杂谈集</option><option value="往事如烟">往事如烟</option><option value="心情日记">心情日记</option><option value="逆水行舟">逆水行舟</option></select></label>
+          </div>
+          <div class="editor-toolbar" aria-label="Markdown 快捷工具">
+            <button type="button" data-markdown-before="## " data-markdown-after="">标题</button>
+            <button type="button" data-markdown-before="**" data-markdown-after="**">粗体</button>
+            <button type="button" data-markdown-before="> " data-markdown-after="">引用</button>
+            <button type="button" data-markdown-before="[链接文字](" data-markdown-after=")">链接</button>
+            <button type="button" id="insert-image-button">插入图片</button>
+            <span>支持 Markdown · 图片以短标签显示</span>
+          </div>
+          <input type="file" id="editor-image-input" accept="image/*" hidden />
+          <div class="editor-workspace">
+            <label class="markdown-input-wrap"><span>Markdown 正文</span><textarea id="markdown-editor" name="body" placeholder="# 从这里开始写作……" required></textarea></label>
+            <section class="markdown-preview-wrap" aria-label="文章预览"><span>实时预览</span><article class="markdown-preview post-body" id="markdown-preview"><p class="preview-placeholder">预览将在这里出现。</p></article></section>
+          </div>
+          <div class="editor-submit-row"><p>文章保存到数据库，图片保存到云端对象存储。</p><button type="submit">发布博客</button></div>
+        </form>
+      </section>
+
+      <section class="admin-manage-view" id="admin-manage-view" aria-labelledby="manage-title">
+        <nav class="admin-breadcrumb"><a href="#home">首页</a><span>›</span><span>文章管理</span></nav>
+        <header class="admin-page-heading">
+          <div><p>POST MANAGEMENT</p><h2 id="manage-title">文章管理</h2></div>
+          <a href="#write">＋ 写新文章</a>
+        </header>
+        <div class="manage-summary" id="manage-summary"></div>
+        <div class="manage-post-list" id="manage-post-list"></div>
+      </section>
+    </main>
+
+    <footer>
+      <div>
+        <span class="footer-mark">Lorne's orbit</span>
+        <p>毁灭孕育新生</p>
+      </div>
+    </footer>
+
+    <dialog class="search-dialog" id="search-dialog">
+      <form method="dialog" class="dialog-top">
+        <p>寻一篇旧文</p>
+        <button aria-label="关闭搜索">×</button>
+      </form>
+      <label class="search-field">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.7"></circle><path d="m16 16 4.2 4.2"></path></svg>
+        <input id="search-input" type="search" placeholder="输入标题、分类或文字……" autocomplete="off" />
+      </label>
+      <div class="search-results" id="search-results"></div>
+    </dialog>
+
+    <dialog class="login-dialog" id="login-dialog">
+      <button class="login-close" type="button" aria-label="关闭登录">×</button>
+      <form class="login-form" id="login-form">
+        <p>ADMIN ACCESS</p>
+        <h2>管理员登录</h2>
+        <label><span>用户名</span><input type="text" name="username" autocomplete="username" required /></label>
+        <label><span>密码</span><input type="password" name="password" autocomplete="current-password" required /></label>
+        <p class="login-error" id="login-error" role="alert"></p>
+        <button type="submit">登录</button>
+      </form>
+    </dialog>
+
+    <dialog class="delete-dialog" id="delete-dialog" aria-labelledby="delete-dialog-title">
+      <div class="delete-dialog-content">
+        <p class="delete-dialog-kicker">DELETE POST</p>
+        <h2 id="delete-dialog-title">确认删除这篇博客？</h2>
+        <p class="delete-dialog-message" id="delete-dialog-message"></p>
+        <p class="delete-dialog-warning">文章及其评论将从服务器一并删除，此操作无法撤销。</p>
+        <div class="delete-dialog-actions">
+          <button class="delete-cancel" id="delete-cancel-button" type="button">暂不删除</button>
+          <button class="delete-confirm" id="delete-confirm-button" type="button">确认删除</button>
+        </div>
+      </div>
+    </dialog>
+
+    <div class="toast" id="toast" role="status" aria-live="polite"></div>
+    <button class="back-to-top" id="back-to-top" type="button" aria-label="返回顶部">
+      <span>返回顶部</span><span aria-hidden="true">→</span>
+    </button>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/dompurify/dist/purify.min.js"></script>
+    <script src="config.js"></script>
+    <script src="api.js"></script>
+    <script src="script.js"></script>
+  </body>
+</html>

@@ -1,0 +1,41 @@
+databases:
+  - name: lorne-orbit-db
+    databaseName: lorne_orbit
+    user: lorne_orbit
+    plan: free
+    ipAllowList: []
+
+services:
+  - type: web
+    name: lorne-orbit-api
+    runtime: node
+    plan: free
+    rootDir: backend
+    buildCommand: corepack enable && pnpm install --frozen-lockfile
+    startCommand: pnpm start
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        fromDatabase:
+          name: lorne-orbit-db
+          property: connectionString
+      - key: DATABASE_SSL
+        value: "true"
+      - key: FRONTEND_ORIGINS
+        sync: false
+      - key: ADMIN_USERNAME
+        value: Lorne
+      - key: ADMIN_PASSWORD_HASH
+        sync: false
+      - key: JWT_SECRET
+        generateValue: true
+      - key: CLOUDINARY_CLOUD_NAME
+        sync: false
+      - key: CLOUDINARY_API_KEY
+        sync: false
+      - key: CLOUDINARY_API_SECRET
+        sync: false
+      - key: CLOUDINARY_FOLDER
+        value: lorne-orbit
