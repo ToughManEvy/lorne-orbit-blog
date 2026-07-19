@@ -761,6 +761,31 @@ document.querySelector("#admin-logout-button").addEventListener("click", async (
   }
 });
 
+document.querySelector("#download-backup-button").addEventListener("click", async (event) => {
+  const button = event.currentTarget;
+  const originalText = button.textContent;
+  button.disabled = true;
+  button.textContent = "正在备份…";
+  try {
+    const backup = await blogApi.downloadBackup();
+    const date = new Date().toISOString().slice(0, 10);
+    const url = URL.createObjectURL(backup);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `lorne-orbit-backup-${date}.zip`;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    showToast("博客备份已下载到本地。", 3200);
+  } catch (error) {
+    showToast(error.message || "博客备份失败，请稍后重试。", 3800);
+  } finally {
+    button.disabled = false;
+    button.textContent = originalText;
+  }
+});
+
 document.querySelector("#legacy-migrate-button").addEventListener("click", async (event) => {
   const button = event.currentTarget;
   const state = getPostState();

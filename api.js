@@ -12,6 +12,18 @@
     return payload;
   }
 
+  async function downloadBackup() {
+    const response = await fetch(`${baseUrl}/backups/download`, {
+      headers: { "X-Requested-With": "lorne-orbit-web" },
+      credentials: "include"
+    });
+    if (!response.ok) {
+      const payload = await response.json().catch(() => ({}));
+      throw new Error(payload.error || `备份失败（${response.status}）`);
+    }
+    return response.blob();
+  }
+
   global.blogApi = Object.freeze({
     getSession: () => request("/auth/me"),
     login: (username, password) => request("/auth/login", { method: "POST", body: JSON.stringify({ username, password }) }),
@@ -30,6 +42,7 @@
       data.append("image", file);
       return request("/uploads", { method: "POST", body: data });
     },
+    downloadBackup,
     migrateLegacy: (payload) => request("/migrations/legacy", { method: "POST", body: JSON.stringify(payload) })
   });
 })(window);

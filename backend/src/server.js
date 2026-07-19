@@ -7,6 +7,7 @@ const helmet = require("helmet");
 const cookieParser = require("cookie-parser");
 const bcrypt = require("bcryptjs");
 const multer = require("multer");
+const archiver = require("archiver");
 const { v2: cloudinary } = require("cloudinary");
 const { rateLimit } = require("express-rate-limit");
 const { pool, migrate } = require("./db");
@@ -50,6 +51,7 @@ app.use(cookieParser());
 
 const writeLimiter = rateLimit({ windowMs: 15 * 60 * 1000, limit: 60, standardHeaders: "draft-8", legacyHeaders: false });
 const loginLimiter = rateLimit({ windowMs: 15 * 60 * 1000, limit: 10, standardHeaders: "draft-8", legacyHeaders: false });
+const backupLimiter = rateLimit({ windowMs: 60 * 60 * 1000, limit: 10, standardHeaders: "draft-8", legacyHeaders: false });
 
 function requireWebClient(req, res, next) {
   if (req.get("X-Requested-With") !== csrfHeaderValue) {
@@ -141,6 +143,50 @@ function cloudinaryPublicIds(markdown) {
   return [...new Set(ids)];
 }
 
+function cloudinaryImageUrls(markdown) {
+  const cloudName = String(process.env.CLOUDINARY_CLOUD_NAME || "").replace(/[^a-zA-Z0-9_-]/g, "");
+  if (!cloudName) return [];
+  const pattern = new RegExp(`https://res\\.cloudinary\\.com/${cloudName}/image/upload/[^)\\s"']+`, "g");
+  return [...new Set(String(markdown || "").match(pattern) || [])];
+}
+
+function safeBackupName(value, fallback) {
+  const safe = String(value || "")
+    .normalize("NFKC")
+    .replace(/[<>:"/\\|?*\u0000-\u001f]/g, "-")
+    .replace(/\s+/g, " ")
+    .replace(/[. ]+$/g, "")
+    .trim()
+    .slice(0, 80);
+  return safe || fallback;
+}
+
+function backupImageExtension(url, contentType) {
+  const types = { "image/jpeg": ".jpg", "image/png": ".png", "image/webp": ".webp", "image/gif": ".gif" };
+  if (types[contentType]) return types[contentType];
+  const pathname = new URL(url).pathname;
+  const match = pathname.match(/\.(jpe?g|png|webp|gif)$/i);
+  return match ? `.${match[1].toLowerCase().replace("jpeg", "jpg")}` : ".img";
+}
+
+function markdownBackup(post, imageFiles) {
+  let body = String(post.body || "");
+  for (const [url, filename] of imageFiles) body = body.split(url).join(`../images/${filename}`);
+  return [
+    "---",
+    `id: ${post.id}`,
+    `title: ${JSON.stringify(post.title)}`,
+    `category: ${JSON.stringify(post.category)}`,
+    `published: ${JSON.stringify(post.published_label)}`,
+    `createdAt: ${JSON.stringify(post.created_at)}`,
+    `hidden: ${Boolean(post.hidden)}`,
+    "---",
+    "",
+    body,
+    ""
+  ].join("\n");
+}
+
 app.get("/api/health", async (_req, res, next) => {
   try {
     await pool.query("SELECT 1");
@@ -187,6 +233,91 @@ app.get("/api/posts", async (req, res, next) => {
     `);
     res.json({ posts: result.rows.map(postFromRow) });
   } catch (error) {
+    next(error);
+  }
+});
+
+app.get("/api/backups/download", backupLimiter, requireWebClient, requireAdmin, async (req, res, next) => {
+  try {
+    const [postsResult, commentsResult, messagesResult] = await Promise.all([
+      pool.query("SELECT * FROM posts ORDER BY sort_order DESC, id DESC"),
+      pool.query("SELECT * FROM comments ORDER BY created_at ASC"),
+      pool.query("SELECT * FROM messages ORDER BY created_at ASC")
+    ]);
+    const generatedAt = new Date();
+    const imageUrls = [...new Set(postsResult.rows.flatMap((post) => cloudinaryImageUrls(post.body)))];
+    const imageFiles = new Map();
+    const failedImages = [];
+    const downloadedImages = [];
+    const imageBuffers = [];
+
+    for (const [index, url] of imageUrls.entries()) {
+      try {
+        const response = await fetch(url, { signal: AbortSignal.timeout(30_000) });
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        const contentType = String(response.headers.get("content-type") || "").split(";")[0].toLowerCase();
+        if (!contentType.startsWith("image/")) throw new Error("响应不是图片");
+        const buffer = Buffer.from(await response.arrayBuffer());
+        if (buffer.length > 20 * 1024 * 1024) throw new Error("图片超过 20MB");
+        const publicPart = decodeURIComponent(new URL(url).pathname.split("/").pop() || `image-${index + 1}`)
+          .replace(/\.[a-zA-Z0-9]+$/, "");
+        const filename = `${String(index + 1).padStart(3, "0")}-${safeBackupName(publicPart, "image")}${backupImageExtension(url, contentType)}`;
+        imageFiles.set(url, filename);
+        imageBuffers.push({ filename, buffer });
+        downloadedImages.push({ sourceUrl: url, file: `images/${filename}`, bytes: buffer.length });
+      } catch (error) {
+        failedImages.push({ sourceUrl: url, error: error.message });
+      }
+    }
+
+    const backupData = {
+      format: "lorne-orbit-backup",
+      version: 1,
+      generatedAt: generatedAt.toISOString(),
+      counts: {
+        posts: postsResult.rowCount,
+        comments: commentsResult.rowCount,
+        messages: messagesResult.rowCount,
+        images: downloadedImages.length
+      },
+      posts: postsResult.rows,
+      comments: commentsResult.rows,
+      messages: messagesResult.rows,
+      images: downloadedImages,
+      failedImages
+    };
+
+    const date = generatedAt.toISOString().slice(0, 10);
+    res.status(200);
+    res.setHeader("Content-Type", "application/zip");
+    res.setHeader("Content-Disposition", `attachment; filename="lorne-orbit-backup-${date}.zip"`);
+    res.setHeader("Cache-Control", "private, no-store");
+
+    const archive = archiver("zip", { zlib: { level: 9 } });
+    archive.on("warning", (error) => console.warn("Backup archive warning", error));
+    archive.on("error", (error) => res.destroy(error));
+    archive.pipe(res);
+    archive.append(JSON.stringify(backupData, null, 2), { name: "data/backup.json" });
+    archive.append([
+      "Lorne's orbit 博客备份",
+      `生成时间：${generatedAt.toLocaleString("zh-CN", { timeZone: "Asia/Shanghai" })}`,
+      `文章：${postsResult.rowCount} 篇；评论：${commentsResult.rowCount} 条；留言：${messagesResult.rowCount} 条；图片：${downloadedImages.length} 张。`,
+      "",
+      "data/backup.json 是可用于程序恢复的完整数据。",
+      "articles/ 包含可直接阅读的 Markdown 文章，图片链接已改为本地相对路径。",
+      "images/ 包含文章在 Cloudinary 中引用的图片。",
+      failedImages.length ? `有 ${failedImages.length} 张图片下载失败，详情见 data/backup.json 的 failedImages。` : "全部引用图片均已成功保存。",
+      "请妥善保管此文件，其中可能包含评论者邮箱等个人信息。",
+      ""
+    ].join("\n"), { name: "README.txt" });
+    postsResult.rows.forEach((post, index) => {
+      const filename = `${String(index + 1).padStart(3, "0")}-${safeBackupName(post.title, `post-${post.id}`)}.md`;
+      archive.append(markdownBackup(post, imageFiles), { name: `articles/${filename}` });
+    });
+    imageBuffers.forEach(({ filename, buffer }) => archive.append(buffer, { name: `images/${filename}` }));
+    await archive.finalize();
+  } catch (error) {
+    if (res.headersSent) return res.destroy(error);
     next(error);
   }
 });
