@@ -81,9 +81,19 @@ function asText(value, max, fallback = "") {
   return text.slice(0, max);
 }
 
+const chineseDateFormatter = new Intl.DateTimeFormat("zh-CN", {
+  timeZone: "Asia/Shanghai",
+  year: "numeric",
+  month: "numeric",
+  day: "numeric",
+  hour: "2-digit",
+  minute: "2-digit",
+  hourCycle: "h23"
+});
+
 function formatChineseDate(value = new Date()) {
-  const date = new Date(value);
-  return `${date.getFullYear()}年${date.getMonth() + 1}月${date.getDate()}日 ${String(date.getHours()).padStart(2, "0")}:${String(date.getMinutes()).padStart(2, "0")}`;
+  const parts = Object.fromEntries(chineseDateFormatter.formatToParts(new Date(value)).map(({ type, value: part }) => [type, part]));
+  return `${parts.year}年${parts.month}月${parts.day}日 ${parts.hour}:${parts.minute}`;
 }
 
 function postFromRow(row) {

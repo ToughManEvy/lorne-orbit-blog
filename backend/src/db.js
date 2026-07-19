@@ -50,6 +50,12 @@ async function migrate() {
 
     CREATE INDEX IF NOT EXISTS messages_created_idx
       ON messages (created_at DESC);
+
+    UPDATE posts
+    SET published_label = '2026年7月20日 01:30',
+        created_at = '2026-07-20 01:30:00+08'
+    WHERE id = 1784482125815
+      AND published_label = '2026年7月19日 17:28';
   `);
 }
 
