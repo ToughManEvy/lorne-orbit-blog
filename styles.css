@@ -315,7 +315,7 @@ body[data-view="articles"] .archive-page { display: block; }
 
 body[data-view="message"] .content-shell,
 body[data-view="message"] .gallery-section { display: none; }
-body[data-view="message"] .message-section { margin-top: 100px; }
+body[data-view="message"] .message-section { margin-top: 90px; padding-top: 0; }
 
 body[data-view="gallery"] .content-shell,
 body[data-view="gallery"] .message-section { display: none; }
