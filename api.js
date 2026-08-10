@@ -36,7 +36,7 @@
     createComment: (articleId, comment) => request(`/posts/${articleId}/comments`, { method: "POST", body: JSON.stringify(comment) }),
     getMessages: () => request("/messages"),
     createMessage: (message) => request("/messages", { method: "POST", body: JSON.stringify(message) }),
-    deleteMessage: (id) => request(`/messages/${id}`, { method: "DELETE" }),
+    deleteMessage: (id) => request(`/messages/${encodeURIComponent(id)}/delete`, { method: "POST" }),
     uploadImage: (file) => {
       const data = new FormData();
       data.append("image", file);

@@ -433,14 +433,17 @@ app.post("/api/messages", writeLimiter, requireWebClient, async (req, res, next)
   }
 });
 
-app.delete("/api/messages/:id", writeLimiter, requireWebClient, requireAdmin, requireUuid, async (req, res, next) => {
+async function deleteMessage(req, res, next) {
   try {
-    await pool.query("DELETE FROM messages WHERE id = $1", [req.params.id]);
-    res.status(204).end();
+    const result = await pool.query("DELETE FROM messages WHERE id = $1 RETURNING id", [req.params.id]);
+    res.json({ id: req.params.id, deleted: result.rowCount > 0 });
   } catch (error) {
     next(error);
   }
-});
+}
+
+app.delete("/api/messages/:id", writeLimiter, requireWebClient, requireAdmin, requireUuid, deleteMessage);
+app.post("/api/messages/:id/delete", writeLimiter, requireWebClient, requireAdmin, requireUuid, deleteMessage);
 
 const upload = multer({
   storage: multer.memoryStorage(),

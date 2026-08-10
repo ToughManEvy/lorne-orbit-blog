@@ -1190,13 +1190,18 @@ document.querySelector("#message-form").addEventListener("submit", async (event)
 localMessageList.addEventListener("click", async (event) => {
   const button = event.target.closest("[data-delete-message]");
   if (!button) return;
+  const messageId = button.dataset.deleteMessage;
+  button.disabled = true;
+  button.textContent = "…";
   try {
-    await blogApi.deleteMessage(button.dataset.deleteMessage);
+    const result = await blogApi.deleteMessage(messageId);
+    serverMessages = serverMessages.filter((message) => String(message.id) !== String(result.id));
   } catch (error) {
+    button.disabled = false;
+    button.textContent = "×";
     showToast(error.message || "留言删除失败。", 2800);
     return;
   }
-  serverMessages = serverMessages.filter((message) => message.id !== button.dataset.deleteMessage);
   renderLocalMessages();
   showToast("这条留言已从服务器删除。", 2200);
 });
