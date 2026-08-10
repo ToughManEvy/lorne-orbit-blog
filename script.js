@@ -98,6 +98,8 @@ let allArticles = [];
 let serverMessages = [];
 let adminAuthenticated = false;
 let pendingImageUploads = 0;
+let articleLoadError = null;
+let articleReloadTimer = null;
 const commentsByArticle = new Map();
 const PAGE_SIZE = 9;
 
@@ -303,6 +305,12 @@ function renderArticles(category = "全部") {
   const visible = filtered.slice(start, start + PAGE_SIZE);
   articleCount.textContent = filtered.length;
   emptyState.hidden = visible.length > 0;
+  if (!visible.length) {
+    emptyState.querySelector("h3").textContent = articleLoadError ? "正在等待文章服务器" : "没有找到这篇文字";
+    emptyState.querySelector("p").textContent = articleLoadError
+      ? "服务器恢复后会自动载入你的文章，无需刷新页面。"
+      : "换个关键词试试吧，或许它正藏在另一页里。";
+  }
 
   const lead = visible[0];
   featuredSlot.innerHTML = lead ? `
@@ -362,6 +370,51 @@ function renderArchive() {
         }).join("")}
       </ul>
     </section>`).join("");
+}
+
+function articleGalleryImages() {
+  const seen = new Set();
+  const images = [];
+  articles.forEach((article) => {
+    if (!article.isMarkdown) return;
+    const rendered = document.createElement("div");
+    rendered.innerHTML = renderMarkdown(article.body || "");
+    rendered.querySelectorAll("img[src]").forEach((image) => {
+      const source = image.getAttribute("src")?.trim();
+      if (!source || seen.has(source)) return;
+      seen.add(source);
+      images.push({
+        source,
+        alt: image.getAttribute("alt")?.trim() || `${article.title}中的图片`,
+        articleId: article.id,
+        articleTitle: article.title,
+        articleDate: article.date
+      });
+    });
+  });
+  return images;
+}
+
+function renderGallery() {
+  const gallery = articleGalleryImages();
+  const grid = document.querySelector("#gallery-grid");
+  const empty = document.querySelector("#gallery-empty");
+  document.querySelector("#gallery-summary").textContent = articleLoadError
+    ? "正在等待文章服务器，恢复后会自动整理图片"
+    : gallery.length
+    ? `从 ${articles.length} 篇博客中收集了 ${gallery.length} 张图片`
+    : `已浏览 ${articles.length} 篇博客，暂时还没有图片`;
+  empty.hidden = gallery.length > 0;
+  grid.innerHTML = gallery.map((image, index) => `
+    <figure class="gallery-item" style="animation-delay:${Math.min(index * 45, 450)}ms">
+      <a class="gallery-image-link" href="${escapeHTML(image.source)}" target="_blank" rel="noopener noreferrer" aria-label="查看大图：${escapeHTML(image.alt)}">
+        <img src="${escapeHTML(image.source)}" alt="${escapeHTML(image.alt)}" loading="lazy" decoding="async">
+      </a>
+      <figcaption>
+        <button type="button" data-read="${image.articleId}">${escapeHTML(image.articleTitle)}</button>
+        <time>${escapeHTML(image.articleDate)}</time>
+      </figcaption>
+    </figure>`).join("");
 }
 
 function renderAdminTools() {
@@ -579,7 +632,8 @@ async function insertAndUploadImages(files) {
 }
 
 async function applyView() {
-  const requested = location.hash.replace("#", "");
+  const requestedHash = location.hash.replace("#", "");
+  const requested = requestedHash === "about" ? "gallery" : requestedHash;
   const isPost = requested.startsWith("post-");
   const isAdminPage = ["write", "manage"].includes(requested);
   if (isAdminPage && !isAdmin()) {
@@ -587,7 +641,7 @@ async function applyView() {
     if (!loginDialog.open) loginDialog.showModal();
     return;
   }
-  const view = isPost ? "post" : (["articles", "message", "about", "write", "manage"].includes(requested) ? requested : "home");
+  const view = isPost ? "post" : (["articles", "message", "gallery", "write", "manage"].includes(requested) ? requested : "home");
   document.body.dataset.view = view;
   currentPage = 1;
   document.querySelectorAll('.top-nav a, .journal-nav a').forEach((link) => {
@@ -601,6 +655,9 @@ async function applyView() {
   } else if (view === "manage") {
     document.title = "文章管理 – Lorne's orbit";
     renderManagePosts();
+  } else if (view === "gallery") {
+    document.title = "博客相册 – Lorne's orbit";
+    renderGallery();
   } else {
     document.title = "Lorne's orbit · 个人博客";
     renderArticles(view === "home" ? "全部" : activeCategory);
@@ -748,6 +805,11 @@ document.querySelector("#articles").addEventListener("click", (event) => {
   }
   const button = event.target.closest("[data-read]");
   if (button) openArticle(button.dataset.read);
+});
+
+document.querySelector("#gallery").addEventListener("click", (event) => {
+  const articleButton = event.target.closest("[data-read]");
+  if (articleButton) openArticle(articleButton.dataset.read);
 });
 
 document.querySelectorAll(".search-button").forEach((button) => {
@@ -946,7 +1008,7 @@ document.querySelector("#download-backup-button").addEventListener("click", asyn
 document.querySelector("#legacy-migrate-button").addEventListener("click", async (event) => {
   const button = event.currentTarget;
   const state = getPostState();
-  const posts = [...getCustomPosts(), ...DEFAULT_ARTICLES].map((article) => ({
+  const posts = getCustomPosts().map((article) => ({
     ...article,
     hidden: Boolean(state[String(article.id)]?.hidden),
     deleted: Boolean(state[String(article.id)]?.deleted)
@@ -1154,23 +1216,56 @@ document.querySelector("#back-to-top").addEventListener("click", () => {
   window.scrollTo({ top: 0, behavior: "smooth" });
 });
 
+function wait(milliseconds) {
+  return new Promise((resolve) => setTimeout(resolve, milliseconds));
+}
+
+async function loadPostsWithRetry(includeHidden, attempts = 5) {
+  let lastError;
+  for (let attempt = 0; attempt < attempts; attempt += 1) {
+    try {
+      return await blogApi.getPosts(includeHidden);
+    } catch (error) {
+      lastError = error;
+      if (attempt < attempts - 1) await wait(Math.min(1000 * (2 ** attempt), 5000));
+    }
+  }
+  throw lastError;
+}
+
+function scheduleArticleReload() {
+  clearTimeout(articleReloadTimer);
+  articleReloadTimer = setTimeout(async () => {
+    try {
+      await refreshArticles();
+      articleLoadError = null;
+      await refreshAllArticleViews();
+      showToast("文章服务器已连接，内容已自动更新。", 2600);
+    } catch (error) {
+      articleLoadError = error;
+      scheduleArticleReload();
+    }
+  }, 8000);
+}
+
 async function initializeApp() {
   try {
-    const session = await blogApi.getSession();
-    adminAuthenticated = Boolean(session.authenticated);
-    const [postsPayload, messagesPayload] = await Promise.all([
-      blogApi.getPosts(adminAuthenticated),
-      blogApi.getMessages()
-    ]);
+    const session = await blogApi.getSession().catch(() => ({ authenticated: false }));
+    adminAuthenticated = Boolean(session?.authenticated);
+    const postsPayload = await loadPostsWithRetry(adminAuthenticated);
+    const messagesPayload = await blogApi.getMessages().catch(() => ({ messages: [] }));
     allArticles = postsPayload.posts;
     articles = allArticles.filter((article) => adminAuthenticated || !article.hidden);
     serverMessages = messagesPayload.messages;
+    articleLoadError = null;
   } catch (error) {
     adminAuthenticated = false;
-    allArticles = DEFAULT_ARTICLES.map((article) => ({ ...article, hidden: false, isCustom: false }));
-    articles = allArticles;
+    allArticles = [];
+    articles = [];
     serverMessages = [];
-    showToast(`API 连接失败，当前仅显示内置文章：${error.message}`, 5200);
+    articleLoadError = error;
+    showToast("文章服务器正在启动，连接成功后会自动显示你的文章。", 5200);
+    scheduleArticleReload();
   }
   renderAdminTools();
   renderLocalMessages();
