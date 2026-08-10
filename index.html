@@ -156,12 +156,13 @@
           <div class="editor-toolbar" aria-label="Markdown 快捷工具">
             <button type="button" data-markdown-before="## " data-markdown-after="">标题</button>
             <button type="button" data-markdown-before="**" data-markdown-after="**">粗体</button>
+            <button type="button" data-markdown-before="==" data-markdown-after="==">高亮</button>
             <button type="button" data-markdown-before="> " data-markdown-after="">引用</button>
             <button type="button" data-markdown-before="[链接文字](" data-markdown-after=")">链接</button>
             <button type="button" id="insert-image-button">插入图片</button>
-            <span>支持 Markdown · 图片以短标签显示</span>
+            <span>支持 Markdown · 可直接粘贴图片 · ==文字== 高亮</span>
           </div>
-          <input type="file" id="editor-image-input" accept="image/*" hidden />
+          <input type="file" id="editor-image-input" accept="image/*" multiple hidden />
           <div class="editor-workspace">
             <label class="markdown-input-wrap"><span>Markdown 正文</span><textarea id="markdown-editor" name="body" placeholder="# 从这里开始写作……" required></textarea></label>
             <section class="markdown-preview-wrap" aria-label="文章预览"><span>实时预览</span><article class="markdown-preview post-body" id="markdown-preview"><p class="preview-placeholder">预览将在这里出现。</p></article></section>
@@ -233,6 +234,6 @@
     <script src="https://cdn.jsdelivr.net/npm/dompurify/dist/purify.min.js"></script>
     <script src="config.js"></script>
     <script src="api.js"></script>
-    <script src="script.js"></script>
+    <script src="script.js?v=20260810-clipboard"></script>
   </body>
 </html>

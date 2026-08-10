@@ -97,6 +97,7 @@ let articles = [];
 let allArticles = [];
 let serverMessages = [];
 let adminAuthenticated = false;
+let pendingImageUploads = 0;
 const commentsByArticle = new Map();
 const PAGE_SIZE = 9;
 
@@ -203,6 +204,7 @@ function fallbackMarkdown(source) {
     .replace(/!\[([^\]]*)\]\((data:image\/[^)]+|https?:\/\/[^)]+)\)/g, '<img src="$2" alt="$1">')
     .replace(/\[([^\]]+)\]\((https?:\/\/[^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>')
     .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
+    .replace(/==(.+?)==/g, "<mark>$1</mark>")
     .replace(/`([^`]+)`/g, "<code>$1</code>")
     .replace(/^(?:- |\* )(.+)$/gm, "<li>$1</li>")
     .replace(/\n{2,}/g, "</p><p>")
@@ -210,9 +212,35 @@ function fallbackMarkdown(source) {
   return `<p>${html}</p>`.replace(/<p>\s*(<h[1-3]>)/g, "$1").replace(/(<\/h[1-3]>)\s*<\/p>/g, "$1");
 }
 
+let markdownExtensionsConfigured = false;
+
+function configureMarkdownExtensions() {
+  if (markdownExtensionsConfigured || !window.marked?.use) return;
+  window.marked.use({
+    extensions: [{
+      name: "highlight",
+      level: "inline",
+      start(source) {
+        const index = source.indexOf("==");
+        return index < 0 ? undefined : index;
+      },
+      tokenizer(source) {
+        const match = /^==(?=\S)([\s\S]*?\S)==/.exec(source);
+        if (!match) return undefined;
+        return { type: "highlight", raw: match[0], tokens: this.lexer.inlineTokens(match[1]) };
+      },
+      renderer(token) {
+        return `<mark>${this.parser.parseInline(token.tokens)}</mark>`;
+      }
+    }]
+  });
+  markdownExtensionsConfigured = true;
+}
+
 function renderMarkdown(source) {
   const resolvedSource = resolveLocalImages(source);
   if (window.marked?.parse && window.DOMPurify?.sanitize) {
+    configureMarkdownExtensions();
     return window.DOMPurify.sanitize(window.marked.parse(resolvedSource, { gfm: true, breaks: false }), { ADD_ATTR: ["target"] });
   }
   return fallbackMarkdown(resolvedSource);
@@ -395,30 +423,159 @@ function insertAtEditorCursor(before, after = "") {
   updateMarkdownPreview();
 }
 
-function readFileAsDataURL(file) {
+function loadImageFile(file) {
   return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(reader.result);
-    reader.onerror = reject;
-    reader.readAsDataURL(file);
+    const url = URL.createObjectURL(file);
+    const image = new Image();
+    image.onload = () => {
+      URL.revokeObjectURL(url);
+      resolve(image);
+    };
+    image.onerror = () => {
+      URL.revokeObjectURL(url);
+      reject(new Error("无法读取图片"));
+    };
+    image.src = url;
   });
 }
 
+function canvasToBlob(canvas, quality) {
+  return new Promise((resolve, reject) => canvas.toBlob(
+    (blob) => blob ? resolve(blob) : reject(new Error("图片压缩失败")),
+    "image/webp",
+    quality
+  ));
+}
+
 async function optimizeImage(file) {
-  const source = await readFileAsDataURL(file);
-  if (file.size <= 550 * 1024) return source;
-  const image = new Image();
-  await new Promise((resolve, reject) => {
-    image.onload = resolve;
-    image.onerror = reject;
-    image.src = source;
-  });
-  const scale = Math.min(1, 1400 / image.width);
+  if (file.type === "image/gif") {
+    if (file.size > 4 * 1024 * 1024) throw new Error("GIF 图片不能超过 4MB");
+    return file;
+  }
+  if (/^image\/(?:jpeg|png|webp)$/.test(file.type) && file.size <= 700 * 1024) return file;
+
+  const image = window.createImageBitmap ? await createImageBitmap(file) : await loadImageFile(file);
+  const width = image.width || image.naturalWidth;
+  const height = image.height || image.naturalHeight;
+  const scale = Math.min(1, 1600 / Math.max(width, height));
   const canvas = document.createElement("canvas");
-  canvas.width = Math.max(1, Math.round(image.width * scale));
-  canvas.height = Math.max(1, Math.round(image.height * scale));
+  canvas.width = Math.max(1, Math.round(width * scale));
+  canvas.height = Math.max(1, Math.round(height * scale));
   canvas.getContext("2d").drawImage(image, 0, 0, canvas.width, canvas.height);
-  return canvas.toDataURL("image/webp", .82);
+  image.close?.();
+  let blob = await canvasToBlob(canvas, .8);
+  if (blob.size > 3.8 * 1024 * 1024) blob = await canvasToBlob(canvas, .68);
+  if (blob.size >= file.size && file.size <= 4 * 1024 * 1024) return file;
+  return new File([blob], file.name.replace(/\.[^.]+$/, ".webp"), { type: "image/webp" });
+}
+
+function imageAltText(file) {
+  return file.name.replace(/\.[^.]+$/, "").replace(/[\[\]]/g, "") || "文章图片";
+}
+
+function isImageFile(file) {
+  return Boolean(file) && (
+    file.type.startsWith("image/") ||
+    /\.(?:avif|bmp|gif|heic|heif|jpe?g|png|webp)$/i.test(file.name)
+  );
+}
+
+function clipboardImageFiles(clipboardData) {
+  const files = [
+    ...(clipboardData?.files || []),
+    ...[...(clipboardData?.items || [])]
+      .filter((item) => item.kind === "file")
+      .map((item) => item.getAsFile())
+  ].filter(isImageFile);
+  const seen = new Set();
+  return files.filter((file) => {
+    const key = `${file.name}:${file.type}:${file.size}:${file.lastModified}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
+async function readClipboardImages() {
+  if (!navigator.clipboard?.read) return [];
+  const clipboardItems = await navigator.clipboard.read();
+  const files = [];
+  for (const item of clipboardItems) {
+    const imageType = item.types.find((type) => type.startsWith("image/"));
+    if (!imageType) continue;
+    const blob = await item.getType(imageType);
+    const extension = imageType.split("/")[1].replace("jpeg", "jpg").replace(/[^a-z0-9]/gi, "") || "png";
+    files.push(new File([blob], `clipboard-${Date.now()}-${files.length + 1}.${extension}`, { type: imageType }));
+  }
+  return files;
+}
+
+async function readImagesFromClipboardHtml(html) {
+  if (!html) return [];
+  const documentFragment = new DOMParser().parseFromString(html, "text/html");
+  const sources = [...documentFragment.querySelectorAll("img[src]")]
+    .map((image) => image.getAttribute("src"))
+    .filter((source) => /^(?:data:image\/|https?:\/\/)/i.test(source))
+    .slice(0, 10);
+  const results = await Promise.allSettled(sources.map(async (source, index) => {
+    const response = await fetch(source);
+    if (!response.ok) throw new Error("无法读取剪贴板中的图片地址");
+    const blob = await response.blob();
+    if (!blob.type.startsWith("image/")) throw new Error("剪贴板内容不是图片");
+    const extension = blob.type.split("/")[1].replace("jpeg", "jpg").replace(/[^a-z0-9]/gi, "") || "png";
+    return new File([blob], `clipboard-${Date.now()}-${index + 1}.${extension}`, { type: blob.type });
+  }));
+  return results.filter((result) => result.status === "fulfilled").map((result) => result.value);
+}
+
+function replaceEditorUploadMarker(marker, replacement) {
+  const editor = document.querySelector("#markdown-editor");
+  if (!editor.value.includes(marker)) return false;
+  const selectionStart = editor.selectionStart;
+  const selectionEnd = editor.selectionEnd;
+  const markerStart = editor.value.indexOf(marker);
+  const delta = replacement.length - marker.length;
+  editor.value = editor.value.replace(marker, replacement);
+  if (document.activeElement === editor) {
+    const adjust = (position) => position > markerStart ? Math.max(markerStart + replacement.length, position + delta) : position;
+    editor.setSelectionRange(adjust(selectionStart), adjust(selectionEnd));
+  }
+  updateMarkdownPreview();
+  return true;
+}
+
+async function insertAndUploadImages(files) {
+  const images = [...files].filter(isImageFile);
+  if (!images.length) return;
+
+  const uploads = images.map((file) => {
+    const id = globalThis.crypto?.randomUUID?.() || `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+    return { file, alt: imageAltText(file), marker: `<!-- image-upload:${id} -->` };
+  });
+  insertAtEditorCursor(`\n${uploads.map(({ marker }) => marker).join("\n")}\n`);
+  pendingImageUploads += uploads.length;
+  document.querySelector('#post-editor-form button[type="submit"]').disabled = true;
+  showToast(images.length > 1 ? `正在上传 ${images.length} 张图片…` : "正在上传图片…", 60000);
+
+  const results = await Promise.allSettled(uploads.map(async ({ file, alt, marker }) => {
+    try {
+      const uploadFile = await optimizeImage(file);
+      const uploaded = await blogApi.uploadImage(uploadFile);
+      replaceEditorUploadMarker(marker, `![${alt}](${uploaded.url})`);
+      return true;
+    } catch (error) {
+      replaceEditorUploadMarker(marker, `<!-- 图片上传失败：${alt} -->`);
+      throw error;
+    }
+  }));
+  const failed = results.filter((result) => result.status === "rejected");
+  if (failed.length) {
+    showToast(failed[0].reason?.message || `${failed.length} 张图片上传失败，请重试。`, 4200);
+  } else {
+    showToast(images.length > 1 ? `${images.length} 张图片已插入正文。` : "图片已插入正文。", 2600);
+  }
+  pendingImageUploads -= uploads.length;
+  document.querySelector('#post-editor-form button[type="submit"]').disabled = pendingImageUploads > 0;
 }
 
 async function applyView() {
@@ -817,31 +974,41 @@ document.querySelector(".editor-toolbar").addEventListener("click", (event) => {
 });
 
 document.querySelector("#markdown-editor").addEventListener("input", updateMarkdownPreview);
+document.querySelector("#markdown-editor").addEventListener("paste", async (event) => {
+  let images = clipboardImageFiles(event.clipboardData);
+  const clipboardTypes = [...(event.clipboardData?.types || [])];
+  const clipboardHtml = event.clipboardData?.getData("text/html") || "";
+  const hasImageHint = clipboardTypes.some((type) => type.startsWith("image/") || type === "Files") || /<img\b/i.test(clipboardHtml);
+  if (!images.length && !hasImageHint) return;
+  event.preventDefault();
+  if (!images.length) {
+    try {
+      images = await readClipboardImages();
+    } catch {
+      // Some browsers expose the image hint but deny the async Clipboard API.
+    }
+  }
+  if (!images.length) images = await readImagesFromClipboardHtml(clipboardHtml);
+  if (images.length) {
+    await insertAndUploadImages(images);
+  } else {
+    showToast("检测到剪贴板图片，但浏览器未允许读取。请授权剪贴板权限或使用“插入图片”。", 4200);
+  }
+});
 document.querySelector("#insert-image-button").addEventListener("click", () => document.querySelector("#editor-image-input").click());
 document.querySelector("#editor-image-input").addEventListener("change", async (event) => {
   const input = event.currentTarget;
-  const file = input.files?.[0];
-  if (!file) return;
-  toast.textContent = "正在处理图片……";
-  toast.classList.add("show");
-  try {
-    const source = await optimizeImage(file);
-    const optimizedBlob = await fetch(source).then((response) => response.blob());
-    const optimizedFile = new File([optimizedBlob], file.name.replace(/\.[^.]+$/, ".webp"), { type: optimizedBlob.type || "image/webp" });
-    const uploaded = await blogApi.uploadImage(optimizedFile);
-    const alt = file.name.replace(/\.[^.]+$/, "").replace(/[\[\]]/g, "") || "文章图片";
-    insertAtEditorCursor(`\n![${alt}](${uploaded.url})\n`);
-    toast.textContent = "图片已插入正文。";
-  } catch (error) {
-    toast.textContent = error.message || "图片上传失败，请换一张较小的图片。";
-  } finally {
-    input.value = "";
-    setTimeout(() => toast.classList.remove("show"), 2600);
-  }
+  const files = [...(input.files || [])];
+  input.value = "";
+  if (files.length) await insertAndUploadImages(files);
 });
 
 document.querySelector("#post-editor-form").addEventListener("submit", async (event) => {
   event.preventDefault();
+  if (pendingImageUploads > 0) {
+    showToast("图片仍在上传，请稍候再发布。", 2600);
+    return;
+  }
   if (!isAdmin()) {
     loginDialog.showModal();
     return;

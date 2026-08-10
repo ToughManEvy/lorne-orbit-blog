@@ -455,7 +455,6 @@ function uploadBuffer(buffer, options = {}) {
     const stream = cloudinary.uploader.upload_stream({
       folder: process.env.CLOUDINARY_FOLDER || "lorne-orbit",
       resource_type: "image",
-      transformation: [{ width: 1800, height: 1800, crop: "limit", quality: "auto", fetch_format: "auto" }],
       ...options
     }, (error, result) => error ? reject(error) : resolve(result));
     stream.end(buffer);
