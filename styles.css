@@ -410,7 +410,7 @@ body[data-view="manage"] .admin-manage-view { display: block; }
 .message-form label span { display: block; margin-bottom: 5px; color: var(--muted); font-size: 11px; letter-spacing: .1em; }
 .message-form input, .message-form textarea { width: 100%; border: 0; border-bottom: 1px solid rgba(85,60,42,.28); outline: none; color: var(--ink); background: transparent; transition: border-color .2s; }
 .message-form input { height: 38px; }
-.message-form textarea { height: 78px; resize: vertical; }
+.message-form textarea { height: 38px; min-height: 38px; resize: vertical; }
 .message-form input:focus, .message-form textarea:focus { border-color: var(--terracotta); }
 .message-form button { justify-self: start; padding: 9px 18px; border: 1px solid var(--terracotta); color: var(--terracotta-dark); background: transparent; cursor: pointer; transition: .2s; }
 .message-form button:hover { color: #fff8ef; background: var(--terracotta); }
