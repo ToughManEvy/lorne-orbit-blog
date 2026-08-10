@@ -3,7 +3,9 @@ const jwt = require("jsonwebtoken");
 const COOKIE_NAME = "lorne_orbit_admin";
 
 function readAdmin(req) {
-  const token = req.cookies?.[COOKIE_NAME];
+  const authorization = String(req.get("Authorization") || "");
+  const bearerToken = authorization.match(/^Bearer\s+(.+)$/i)?.[1];
+  const token = req.cookies?.[COOKIE_NAME] || bearerToken;
   if (!token) return null;
   try {
     return jwt.verify(token, process.env.JWT_SECRET, {
@@ -38,6 +40,7 @@ function issueAdminCookie(res, username) {
     maxAge: 8 * 60 * 60 * 1000,
     path: "/"
   });
+  return token;
 }
 
 function clearAdminCookie(res) {

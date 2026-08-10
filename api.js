@@ -1,10 +1,29 @@
 (function createBlogApi(global) {
   const baseUrl = String(global.BLOG_CONFIG?.API_URL || "/api").replace(/\/$/, "");
+  const adminTokenKey = "lorne-orbit-admin-session";
+  let adminToken = "";
+
+  try {
+    adminToken = sessionStorage.getItem(adminTokenKey) || "";
+  } catch {
+    adminToken = "";
+  }
+
+  function rememberAdminToken(token) {
+    adminToken = String(token || "");
+    try {
+      if (adminToken) sessionStorage.setItem(adminTokenKey, adminToken);
+      else sessionStorage.removeItem(adminTokenKey);
+    } catch {
+      // The in-memory token still supports this tab when storage is unavailable.
+    }
+  }
 
   async function request(path, options = {}) {
     const headers = new Headers(options.headers || {});
     if (options.body && !(options.body instanceof FormData)) headers.set("Content-Type", "application/json");
     if (options.method && options.method !== "GET") headers.set("X-Requested-With", "lorne-orbit-web");
+    if (adminToken) headers.set("Authorization", `Bearer ${adminToken}`);
     const response = await fetch(`${baseUrl}${path}`, { ...options, headers, credentials: "include" });
     if (response.status === 204) return null;
     const payload = await response.json().catch(() => ({}));
@@ -26,8 +45,18 @@
 
   global.blogApi = Object.freeze({
     getSession: () => request("/auth/me"),
-    login: (username, password) => request("/auth/login", { method: "POST", body: JSON.stringify({ username, password }) }),
-    logout: () => request("/auth/logout", { method: "POST" }),
+    login: async (username, password) => {
+      const session = await request("/auth/login", { method: "POST", body: JSON.stringify({ username, password }) });
+      rememberAdminToken(session.token);
+      return session;
+    },
+    logout: async () => {
+      try {
+        return await request("/auth/logout", { method: "POST" });
+      } finally {
+        rememberAdminToken("");
+      }
+    },
     getPosts: (includeHidden = false) => request(`/posts${includeHidden ? "?includeHidden=true" : ""}`),
     createPost: (post) => request("/posts", { method: "POST", body: JSON.stringify(post) }),
     updatePost: (id, changes) => request(`/posts/${id}`, { method: "PATCH", body: JSON.stringify(changes) }),

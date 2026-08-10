@@ -221,8 +221,8 @@ app.post("/api/auth/login", loginLimiter, requireWebClient, async (req, res, nex
     );
     const passwordMatches = await bcrypt.compare(password, process.env.ADMIN_PASSWORD_HASH);
     if (!usernameMatches || !passwordMatches) return res.status(401).json({ error: "用户名或密码不正确" });
-    issueAdminCookie(res, process.env.ADMIN_USERNAME);
-    res.json({ authenticated: true, username: process.env.ADMIN_USERNAME });
+    const token = issueAdminCookie(res, process.env.ADMIN_USERNAME);
+    res.json({ authenticated: true, username: process.env.ADMIN_USERNAME, token });
   } catch (error) {
     next(error);
   }
