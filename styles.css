@@ -402,7 +402,7 @@ body[data-view="manage"] .admin-manage-view { display: block; }
 .empty-state h3 { margin: 8px 0 4px; font: 600 20px var(--serif); }
 .empty-state p { margin: 0; font-size: 13px; }
 
-.message-section { position: relative; width: min(1120px, calc(100% - 40px)); margin: 0 auto 110px; padding: 55px 0; display: grid; grid-template-columns: 1fr 1.15fr; gap: 90px; overflow: hidden; background: transparent; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); box-shadow: none; }
+.message-section { position: relative; width: min(1120px, calc(100% - 40px)); margin: 0 auto 110px; padding: 55px 0; display: grid; grid-template-columns: 1fr 1.15fr; gap: 90px; overflow: hidden; background: transparent; border-bottom: 1px solid var(--line); box-shadow: none; }
 .message-section::after { display: none; }
 .message-copy p:not(.section-kicker) { max-width: 420px; margin: 20px 0 0; color: var(--muted); font: 13px/2 var(--serif); }
 .message-side { min-width: 0; }
