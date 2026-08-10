@@ -98,6 +98,8 @@ let allArticles = [];
 let serverMessages = [];
 let adminAuthenticated = false;
 let pendingImageUploads = 0;
+let messageSubmitInFlight = false;
+let messageDraftRequest = null;
 let articleLoadError = null;
 let articleReloadTimer = null;
 const commentsByArticle = new Map();
@@ -159,8 +161,17 @@ function getLocalMessages() {
   return serverMessages;
 }
 
+function createClientRequestId() {
+  if (globalThis.crypto?.randomUUID) return globalThis.crypto.randomUUID();
+  return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (character) => {
+    const random = Math.floor(Math.random() * 16);
+    const value = character === "x" ? random : (random & 3) | 8;
+    return value.toString(16);
+  });
+}
+
 function renderLocalMessages() {
-  const messages = getLocalMessages().slice(0, 3);
+  const messages = getLocalMessages();
   localMessageList.replaceChildren();
   if (!messages.length) {
     const empty = document.createElement("p");
@@ -169,6 +180,10 @@ function renderLocalMessages() {
     localMessageList.append(empty);
     return;
   }
+  const summary = document.createElement("p");
+  summary.className = "message-list-summary";
+  summary.textContent = `共 ${messages.length} 条留言`;
+  localMessageList.append(summary);
   messages.forEach((message) => {
     const item = document.createElement("div");
     item.className = "saved-message";
@@ -1171,20 +1186,36 @@ topNav.addEventListener("click", () => {
 
 document.querySelector("#message-form").addEventListener("submit", async (event) => {
   event.preventDefault();
-  const formData = new FormData(event.currentTarget);
-  try {
-    const payload = await blogApi.createMessage({
-      name: String(formData.get("name") || "").trim() || "一位路过的朋友",
-      text: String(formData.get("message") || "").trim()
-    });
-    serverMessages.unshift(payload.message);
-  } catch (error) {
-    showToast(error.message || "留言发布失败，请稍后重试。", 2800);
-    return;
+  if (messageSubmitInFlight) return;
+  const form = event.currentTarget;
+  const button = form.querySelector('button[type="submit"]');
+  const originalButtonContent = button.innerHTML;
+  const formData = new FormData(form);
+  const message = {
+    name: String(formData.get("name") || "").trim() || "一位路过的朋友",
+    text: String(formData.get("message") || "").trim()
+  };
+  const fingerprint = `${message.name}\n${message.text}`;
+  if (!messageDraftRequest || messageDraftRequest.fingerprint !== fingerprint) {
+    messageDraftRequest = { fingerprint, id: createClientRequestId() };
   }
-  event.currentTarget.reset();
-  renderLocalMessages();
-  showToast("留言已发布到博客服务器。", 2800);
+  messageSubmitInFlight = true;
+  button.disabled = true;
+  button.textContent = "正在发布……";
+  try {
+    const payload = await blogApi.createMessage(message, messageDraftRequest.id);
+    serverMessages = [payload.message, ...serverMessages.filter((item) => String(item.id) !== String(payload.message.id))];
+    messageDraftRequest = null;
+    form.reset();
+    renderLocalMessages();
+    showToast("留言已发布到博客服务器。", 2800);
+  } catch (error) {
+    showToast(error.message || "发布暂未成功，再次点击会安全重试，不会重复留言。", 3600);
+  } finally {
+    messageSubmitInFlight = false;
+    button.disabled = false;
+    button.innerHTML = originalButtonContent;
+  }
 });
 
 localMessageList.addEventListener("click", async (event) => {

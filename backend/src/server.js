@@ -414,7 +414,7 @@ app.post("/api/posts/:id/comments", writeLimiter, requireWebClient, requireArtic
 
 app.get("/api/messages", async (_req, res, next) => {
   try {
-    const result = await pool.query("SELECT * FROM messages ORDER BY created_at DESC LIMIT 30");
+    const result = await pool.query("SELECT * FROM messages ORDER BY created_at DESC LIMIT 100");
     res.json({ messages: result.rows.map(messageFromRow) });
   } catch (error) {
     next(error);
@@ -425,8 +425,15 @@ app.post("/api/messages", writeLimiter, requireWebClient, async (req, res, next)
   try {
     const name = asText(req.body?.name, 40, "一位路过的朋友") || "一位路过的朋友";
     const body = asText(req.body?.text, 300);
+    const requestId = asText(req.get("Idempotency-Key"), 36);
     if (!body) return res.status(400).json({ error: "留言不能为空" });
-    const result = await pool.query("INSERT INTO messages (id, name, body) VALUES ($1,$2,$3) RETURNING *", [crypto.randomUUID(), name, body]);
+    if (requestId && !isUuid(requestId)) return res.status(400).json({ error: "留言请求标识不正确" });
+    const result = await pool.query(`
+      INSERT INTO messages (id, name, body, request_id)
+      VALUES ($1,$2,$3,$4)
+      ON CONFLICT (request_id) DO UPDATE SET request_id = EXCLUDED.request_id
+      RETURNING *
+    `, [crypto.randomUUID(), name, body, requestId || null]);
     res.status(201).json({ message: messageFromRow(result.rows[0]) });
   } catch (error) {
     next(error);

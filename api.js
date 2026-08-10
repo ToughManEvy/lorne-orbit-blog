@@ -64,7 +64,11 @@
     getComments: (articleId) => request(`/posts/${articleId}/comments`),
     createComment: (articleId, comment) => request(`/posts/${articleId}/comments`, { method: "POST", body: JSON.stringify(comment) }),
     getMessages: () => request("/messages"),
-    createMessage: (message) => request("/messages", { method: "POST", body: JSON.stringify(message) }),
+    createMessage: (message, requestId) => request("/messages", {
+      method: "POST",
+      headers: { "Idempotency-Key": requestId },
+      body: JSON.stringify(message)
+    }),
     deleteMessage: (id) => request(`/messages/${encodeURIComponent(id)}/delete`, { method: "POST" }),
     uploadImage: (file) => {
       const data = new FormData();

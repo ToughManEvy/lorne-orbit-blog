@@ -51,6 +51,12 @@ async function migrate() {
     CREATE INDEX IF NOT EXISTS messages_created_idx
       ON messages (created_at DESC);
 
+    ALTER TABLE messages
+      ADD COLUMN IF NOT EXISTS request_id UUID;
+
+    CREATE UNIQUE INDEX IF NOT EXISTS messages_request_id_unique
+      ON messages (request_id);
+
     UPDATE posts
     SET published_label = '2026年7月20日 01:30',
         created_at = '2026-07-20 01:30:00+08'

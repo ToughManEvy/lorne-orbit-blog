@@ -414,9 +414,11 @@ body[data-view="manage"] .admin-manage-view { display: block; }
 .message-form input:focus, .message-form textarea:focus { border-color: var(--terracotta); }
 .message-form button { justify-self: start; padding: 9px 18px; border: 1px solid var(--terracotta); color: var(--terracotta-dark); background: transparent; cursor: pointer; transition: .2s; }
 .message-form button:hover { color: #fff8ef; background: var(--terracotta); }
+.message-form button:disabled { color: #9b8a7a; border-color: rgba(85,60,42,.22); background: transparent; cursor: wait; }
 .local-only-note { margin: 12px 0 0; color: #8c7c6d; font-size: 10px; letter-spacing: .03em; }
 .local-only-note span { margin-right: 4px; color: var(--terracotta); }
-.local-message-list { display: grid; gap: 8px; margin-top: 22px; }
+.local-message-list { display: grid; max-height: 430px; gap: 8px; margin-top: 22px; padding-right: 8px; overflow-y: auto; scrollbar-width: thin; scrollbar-color: rgba(169,84,61,.45) transparent; }
+.message-list-summary { position: sticky; z-index: 1; top: 0; margin: 0 !important; padding: 3px 0 6px; color: #8c7c6d !important; background: var(--paper); font: 10px/1.4 var(--sans) !important; letter-spacing: .08em; }
 .saved-message { position: relative; max-width: 420px; padding: 10px 32px 10px 12px; background: rgba(255,250,241,.45); border-left: 2px solid rgba(169,84,61,.45); }
 .saved-message p { margin: 0 !important; overflow: hidden; color: #66584d !important; font: 11px/1.65 var(--serif) !important; text-overflow: ellipsis; white-space: nowrap; }
 .saved-message small { color: #9b725f; font-size: 9px; }
