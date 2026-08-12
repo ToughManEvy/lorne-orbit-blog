@@ -1,5 +1,3 @@
-@import url("https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;600;700&family=Roboto:wght@400;700&display=swap");
-
 :root {
   --paper: #ead9bd;
   --paper-light: #f3e6cf;
@@ -11,8 +9,9 @@
   --olive: #737451;
   --line: rgba(92, 69, 50, 0.2);
   --shadow: none;
-  --serif: "Noto Sans SC", "PingFang SC", "Microsoft YaHei", sans-serif;
-  --sans: Roboto, "Noto Sans SC", "PingFang SC", "Microsoft YaHei", sans-serif;
+  --serif: "Iowan Old Style", "Songti SC", STSong, "Noto Serif CJK SC", "Source Han Serif SC", SimSun, serif;
+  --literary: "LXGW WenKai", "霞鹜文楷", "FZKai-Z03", "STFangsong", FangSong, "Songti SC", STSong, SimSun, serif;
+  --sans: Inter, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
 }
 
 * { box-sizing: border-box; }
@@ -223,10 +222,10 @@ a { color: inherit; text-decoration: none; }
 .post-breadcrumb span:last-child { overflow: hidden; text-overflow: ellipsis; }
 .post-header { max-width: 900px; }
 .post-category { margin: 0 0 10px; color: var(--terracotta); font-size: 12px; }
-.post-header h1 { margin: 0; color: var(--ink); font: 700 clamp(29px, 4vw, 38px)/1.45 var(--serif); letter-spacing: .01em; }
+.post-header h1 { margin: 0; color: var(--ink); font: 700 clamp(29px, 4vw, 38px)/1.45 var(--literary); letter-spacing: .045em; }
 .post-meta { display: flex; gap: 20px; margin: 16px 0 0; color: #817c75; font-size: 12px; }
-.post-body { max-width: 840px; margin-top: 48px; color: #433e39; font: 400 15px/2.05 var(--serif); }
-.post-body p { margin: 0 0 24px; }
+.post-body { max-width: 780px; margin-top: 48px; color: #433e39; font: 400 17px/2.15 var(--literary); letter-spacing: .035em; font-kerning: normal; text-rendering: optimizeLegibility; }
+.post-body p { margin: 0 0 1.65em; }
 .post-body .post-lead { margin-bottom: 28px; color: #302c29; font-size: 16px; font-weight: 500; }
 .post-body h1, .post-body h2, .post-body h3 { margin: 1.7em 0 .7em; color: #302b27; line-height: 1.45; }
 .post-body h1 { font-size: 28px; }
@@ -576,8 +575,8 @@ dialog::backdrop { background: rgba(38,30,24,.34); backdrop-filter: blur(2px); }
   .single-post { width: calc(100% - 36px); padding: 65px 0 85px; }
   .post-breadcrumb { margin-bottom: 32px; }
   .post-header h1 { font-size: 28px; }
-  .post-body { margin-top: 36px; font-size: 14px; line-height: 2; }
-  .post-body .post-lead { font-size: 15px; }
+  .post-body { margin-top: 36px; font-size: 16px; line-height: 2.05; letter-spacing: .025em; }
+  .post-body .post-lead { font-size: 17px; }
   .post-navigation { grid-template-columns: 1fr; gap: 26px; }
   .post-navigation > div:last-child { text-align: left; }
   .post-author { align-items: flex-start; }

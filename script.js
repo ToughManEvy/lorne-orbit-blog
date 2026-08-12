@@ -90,6 +90,7 @@ const CUSTOM_POSTS_KEY = "lorne-orbit-custom-posts";
 const POST_STATE_KEY = "lorne-orbit-post-state";
 const POST_IMAGES_KEY = "lorne-orbit-post-images";
 const LEGACY_MIGRATION_KEY = "lorne-orbit-server-migration-complete";
+const ARTICLE_CACHE_KEY = "lorne-orbit-public-post-cache-v1";
 
 let activeCategory = "全部";
 let currentPage = 1;
@@ -155,6 +156,20 @@ async function refreshArticles() {
   const payload = await blogApi.getPosts(isAdmin());
   allArticles = payload.posts;
   articles = allArticles.filter((article) => isAdmin() || !article.hidden);
+  if (!isAdmin()) writeArticleCache(articles);
+}
+
+function readArticleCache() {
+  const cached = readJSONStorage(ARTICLE_CACHE_KEY, null);
+  return Array.isArray(cached?.posts) ? cached.posts : [];
+}
+
+function writeArticleCache(posts) {
+  try {
+    localStorage.setItem(ARTICLE_CACHE_KEY, JSON.stringify({ savedAt: Date.now(), posts }));
+  } catch {
+    // A fresh network response still works when storage is full or unavailable.
+  }
 }
 
 function getLocalMessages() {
@@ -1256,14 +1271,14 @@ function wait(milliseconds) {
   return new Promise((resolve) => setTimeout(resolve, milliseconds));
 }
 
-async function loadPostsWithRetry(includeHidden, attempts = 5) {
+async function loadPostsWithRetry(includeHidden, attempts = 3) {
   let lastError;
   for (let attempt = 0; attempt < attempts; attempt += 1) {
     try {
-      return await blogApi.getPosts(includeHidden);
+      return await blogApi.getPosts(includeHidden, { timeout: 12000 });
     } catch (error) {
       lastError = error;
-      if (attempt < attempts - 1) await wait(Math.min(1000 * (2 ** attempt), 5000));
+      if (attempt < attempts - 1) await wait(Math.min(1200 * (2 ** attempt), 3000));
     }
   }
   throw lastError;
@@ -1285,28 +1300,55 @@ function scheduleArticleReload() {
 }
 
 async function initializeApp() {
-  try {
-    const session = await blogApi.getSession().catch(() => ({ authenticated: false }));
-    adminAuthenticated = Boolean(session?.authenticated);
-    const postsPayload = await loadPostsWithRetry(adminAuthenticated);
-    const messagesPayload = await blogApi.getMessages().catch(() => ({ messages: [] }));
-    allArticles = postsPayload.posts;
-    articles = allArticles.filter((article) => adminAuthenticated || !article.hidden);
-    serverMessages = messagesPayload.messages;
-    articleLoadError = null;
-  } catch (error) {
-    adminAuthenticated = false;
-    allArticles = [];
-    articles = [];
-    serverMessages = [];
-    articleLoadError = error;
-    showToast("文章服务器正在启动，连接成功后会自动显示你的文章。", 5200);
-    scheduleArticleReload();
+  const cachedPosts = readArticleCache();
+  if (cachedPosts.length) {
+    allArticles = cachedPosts;
+    articles = cachedPosts.filter((article) => !article.hidden);
   }
   renderAdminTools();
   renderLocalMessages();
   renderArchive();
+  const requestedPostWithoutCache = location.hash.startsWith("#post-") && !cachedPosts.length;
+  if (!requestedPostWithoutCache) await applyView();
+
+  const sessionPromise = blogApi.getSession({ timeout: 4500 }).catch(() => ({ authenticated: false }));
+  const postsPromise = loadPostsWithRetry(false);
+  const messagesPromise = blogApi.getMessages({ timeout: 6000 }).catch(() => ({ messages: [] }));
+  try {
+    const postsPayload = await postsPromise;
+    allArticles = postsPayload.posts;
+    articles = allArticles.filter((article) => !article.hidden);
+    writeArticleCache(articles);
+    articleLoadError = null;
+  } catch (error) {
+    if (!cachedPosts.length) {
+      allArticles = [];
+      articles = [];
+    }
+    articleLoadError = error;
+    showToast("文章服务器正在启动，连接成功后会自动显示你的文章。", 5200);
+    scheduleArticleReload();
+  }
+  renderArchive();
   await applyView();
+
+  void messagesPromise.then((payload) => {
+    serverMessages = payload.messages;
+    renderLocalMessages();
+  });
+
+  const session = await sessionPromise;
+  adminAuthenticated = Boolean(session?.authenticated);
+  if (adminAuthenticated) {
+    const adminPayload = await blogApi.getPosts(true, { timeout: 8000 }).catch(() => null);
+    if (adminPayload) {
+      allArticles = adminPayload.posts;
+      articles = allArticles;
+      renderArchive();
+      await applyView();
+    }
+  }
+  renderAdminTools();
 }
 
 window.addEventListener("hashchange", () => void applyView());
