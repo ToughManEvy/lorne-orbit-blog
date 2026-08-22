@@ -236,6 +236,42 @@ function cloudinaryImageUrls(markdown, env) {
   return [...new Set(String(markdown || "").match(pattern) || [])];
 }
 
+function siteImageUrls(markdown) {
+  const matches = String(markdown || "").match(/\/(?:images|uploads)\/[^)\s"']+/g) || [];
+  return [...new Set(matches.filter((value) => !value.includes("..")))];
+}
+
+function r2KeyFromPath(pathname) {
+  if (!pathname.startsWith("/uploads/")) return "";
+  let key;
+  try {
+    key = decodeURIComponent(pathname.slice("/uploads/".length));
+  } catch {
+    return "";
+  }
+  if (!key || key.length > 1024 || key.startsWith("/") || key.split("/").includes("..")) return "";
+  return key;
+}
+
+function r2ImageKeys(markdown) {
+  return siteImageUrls(markdown).map((value) => r2KeyFromPath(new URL(value, "https://blog.invalid").pathname)).filter(Boolean);
+}
+
+const r2ImageExtensions = { "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp", "image/gif": "gif" };
+
+async function uploadToR2(env, blob, filename = "image") {
+  if (!env.IMAGES) throw new HttpError(503, "服务器尚未配置图片存储");
+  const extension = r2ImageExtensions[blob.type];
+  if (!extension) throw new HttpError(400, "图片格式不正确");
+  const date = new Date().toISOString().slice(0, 7);
+  const key = `articles/${date}/${crypto.randomUUID()}.${extension}`;
+  await env.IMAGES.put(key, blob.stream(), {
+    httpMetadata: { contentType: blob.type, cacheControl: "public, max-age=31536000, immutable" },
+    customMetadata: { originalName: asText(filename, 180, "image") }
+  });
+  return { url: `/uploads/${key}`, publicId: key };
+}
+
 async function sha1Hex(value) {
   const digest = new Uint8Array(await crypto.subtle.digest("SHA-1", encoder.encode(value)));
   return [...digest].map((byte) => byte.toString(16).padStart(2, "0")).join("");
@@ -297,7 +333,7 @@ function safeBackupName(value, fallback) {
 function backupImageExtension(url, contentType) {
   const types = { "image/jpeg": ".jpg", "image/png": ".png", "image/webp": ".webp", "image/gif": ".gif" };
   if (types[contentType]) return types[contentType];
-  const match = new URL(url).pathname.match(/\.(jpe?g|png|webp|gif)$/i);
+  const match = new URL(url, "https://blog.invalid").pathname.match(/\.(jpe?g|png|webp|gif)$/i);
   return match ? `.${match[1].toLowerCase().replace("jpeg", "jpg")}` : ".img";
 }
 
@@ -309,7 +345,7 @@ function markdownBackup(post, imageFiles) {
     `hidden: ${bool(post.hidden)}`, "---", "", body, ""].join("\n");
 }
 
-async function createBackup(env) {
+async function createBackup(env, request) {
   const [postsResult, commentsResult, messagesResult] = await Promise.all([
     env.DB.prepare("SELECT * FROM posts ORDER BY sort_order DESC, id DESC").all(),
     env.DB.prepare("SELECT * FROM comments ORDER BY created_at ASC").all(),
@@ -318,7 +354,7 @@ async function createBackup(env) {
   const posts = postsResult.results || [];
   const comments = commentsResult.results || [];
   const messages = messagesResult.results || [];
-  const imageUrls = [...new Set(posts.flatMap((post) => cloudinaryImageUrls(post.body, env)))];
+  const imageUrls = [...new Set(posts.flatMap((post) => [...cloudinaryImageUrls(post.body, env), ...siteImageUrls(post.body)]))];
   const imageFiles = new Map();
   const failedImages = [];
   const downloadedImages = [];
@@ -326,13 +362,26 @@ async function createBackup(env) {
 
   for (const [index, url] of imageUrls.entries()) {
     try {
-      const response = await fetch(url);
-      if (!response.ok) throw new Error(`HTTP ${response.status}`);
-      const contentType = String(response.headers.get("content-type") || "").split(";")[0].toLowerCase();
+      let contentType;
+      let bytes;
+      const pathname = new URL(url, request.url).pathname;
+      const r2Key = r2KeyFromPath(pathname);
+      if (r2Key) {
+        const object = await env.IMAGES.get(r2Key);
+        if (!object) throw new Error("R2 图片不存在");
+        contentType = String(object.httpMetadata?.contentType || "").toLowerCase();
+        bytes = new Uint8Array(await object.arrayBuffer());
+      } else {
+        const response = url.startsWith("/")
+          ? await env.ASSETS.fetch(new Request(new URL(url, request.url)))
+          : await fetch(url);
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        contentType = String(response.headers.get("content-type") || "").split(";")[0].toLowerCase();
+        bytes = new Uint8Array(await response.arrayBuffer());
+      }
       if (!contentType.startsWith("image/")) throw new Error("响应不是图片");
-      const bytes = new Uint8Array(await response.arrayBuffer());
       if (bytes.length > 20 * 1024 * 1024) throw new Error("图片超过 20MB");
-      const publicPart = decodeURIComponent(new URL(url).pathname.split("/").pop() || `image-${index + 1}`).replace(/\.[a-zA-Z0-9]+$/, "");
+      const publicPart = decodeURIComponent(pathname.split("/").pop() || `image-${index + 1}`).replace(/\.[a-zA-Z0-9]+$/, "");
       const filename = `${String(index + 1).padStart(3, "0")}-${safeBackupName(publicPart, "image")}${backupImageExtension(url, contentType)}`;
       imageFiles.set(url, filename);
       files[`images/${filename}`] = bytes;
@@ -356,7 +405,7 @@ async function createBackup(env) {
     `生成时间：${generatedAt.toLocaleString("zh-CN", { timeZone: "Asia/Shanghai" })}`,
     `文章：${posts.length} 篇；评论：${comments.length} 条；留言：${messages.length} 条；图片：${downloadedImages.length} 张。`,
     "", "data/backup.json 包含可用于恢复的完整结构化数据。",
-    "articles/ 包含 Markdown 文章，images/ 包含文章引用的 Cloudinary 图片。",
+    "articles/ 包含 Markdown 文章，images/ 包含文章引用的站内、R2 或 Cloudinary 图片。",
     failedImages.length ? `有 ${failedImages.length} 张图片下载失败，详情见 backup.json。` : "全部引用图片均已保存。",
     "备份可能包含评论者邮箱，请妥善保管。", ""
   ].join("\n"));
@@ -447,7 +496,10 @@ async function handleApi(request, env, ctx) {
     const row = await env.DB.prepare("SELECT body FROM posts WHERE id = ?1").bind(id).first();
     if (!row) throw new HttpError(404, "文章不存在");
     await env.DB.prepare("DELETE FROM posts WHERE id = ?1").bind(id).run();
-    ctx.waitUntil(Promise.allSettled(cloudinaryPublicIds(row.body, env).map((publicId) => destroyCloudinaryImage(env, publicId))));
+    const cloudinaryDeletes = cloudinaryPublicIds(row.body, env).map((publicId) => destroyCloudinaryImage(env, publicId));
+    const r2Keys = r2ImageKeys(row.body);
+    const r2Deletes = r2Keys.length && env.IMAGES ? [env.IMAGES.delete(r2Keys)] : [];
+    ctx.waitUntil(Promise.allSettled([...cloudinaryDeletes, ...r2Deletes]));
     return new Response(null, { status: 204 });
   }
 
@@ -532,15 +584,15 @@ async function handleApi(request, env, ctx) {
     if (!(file instanceof File) || !/^image\/(?:jpeg|png|webp|gif)$/.test(file.type) || file.size > 4 * 1024 * 1024) {
       throw new HttpError(400, "图片过大或上传格式不正确");
     }
-    const result = await uploadToCloudinary(env, file, file.name || "image");
-    return json({ url: result.secure_url, publicId: result.public_id }, 201);
+    const result = await uploadToR2(env, file, file.name || "image");
+    return json(result, 201);
   }
 
   if (method === "GET" && path === "/api/backups/download") {
     requireWebClient(request);
     await requireAdmin(request, env);
     await enforceRateLimit(env, request, "backup", 60 * 60, 10);
-    const backup = await createBackup(env);
+    const backup = await createBackup(env, request);
     return new Response(backup.bytes, {
       status: 200,
       headers: {
@@ -563,8 +615,8 @@ async function handleApi(request, env, ctx) {
     for (const [imageId, image] of Object.entries(images).slice(0, 30)) {
       const blob = dataUrlBlob(image?.data);
       if (!blob) continue;
-      const uploaded = await uploadToCloudinary(env, blob, `legacy-${imageId}`);
-      imageUrls[imageId] = uploaded.secure_url;
+      const uploaded = await uploadToR2(env, blob, `legacy-${imageId}`);
+      imageUrls[imageId] = uploaded.url;
     }
     const baseOrder = Date.now();
     const statements = [];
@@ -620,11 +672,26 @@ function withSecurityHeaders(response, cors = {}) {
   return result;
 }
 
+async function handleR2Image(request, env) {
+  if (request.method !== "GET" && request.method !== "HEAD") throw new HttpError(405, "请求方法不支持");
+  if (!env.IMAGES) throw new HttpError(503, "服务器尚未配置图片存储");
+  const key = r2KeyFromPath(new URL(request.url).pathname);
+  if (!key) throw new HttpError(400, "图片路径不正确");
+  const object = await env.IMAGES.get(key);
+  if (!object) throw new HttpError(404, "图片不存在");
+  const headers = new Headers();
+  object.writeHttpMetadata(headers);
+  headers.set("ETag", object.httpEtag);
+  headers.set("Cache-Control", "public, max-age=31536000, immutable");
+  return new Response(request.method === "HEAD" ? null : object.body, { status: 200, headers });
+}
+
 export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
-    if (!url.pathname.startsWith("/api/")) return env.ASSETS.fetch(request);
     try {
+      if (url.pathname.startsWith("/uploads/")) return withSecurityHeaders(await handleR2Image(request, env));
+      if (!url.pathname.startsWith("/api/")) return env.ASSETS.fetch(request);
       const cors = corsHeaders(request, env);
       if (request.method === "OPTIONS") return withSecurityHeaders(new Response(null, { status: 204 }), cors);
       const response = await handleApi(request, env, ctx);

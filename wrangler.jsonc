@@ -8,8 +8,14 @@
   "assets": {
     "directory": "./dist",
     "binding": "ASSETS",
-    "run_worker_first": ["/api/*"]
+    "run_worker_first": ["/api/*", "/uploads/*"]
   },
+  "r2_buckets": [
+    {
+      "binding": "IMAGES",
+      "bucket_name": "lorne-orbit-images"
+    }
+  ],
   "d1_databases": [
     {
       "binding": "DB",
@@ -20,7 +26,6 @@
   ],
   "vars": {
     "ADMIN_USERNAME": "Lorne",
-    "CLOUDINARY_FOLDER": "lorne-orbit",
     "FRONTEND_ORIGINS": "https://sensational-banoffee-1649e3.netlify.app"
   }
 }

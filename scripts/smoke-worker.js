@@ -21,10 +21,21 @@ async function request(path, options = {}) {
   });
   assert.equal(login.body.authenticated, true);
   const authHeaders = { Authorization: `Bearer ${login.body.token}`, "X-Requested-With": "lorne-orbit-web" };
+  const imageForm = new FormData();
+  const imageBytes = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=", "base64");
+  imageForm.append("image", new Blob([imageBytes], { type: "image/png" }), "smoke.png");
+  const uploaded = await request("/uploads", { method: "POST", headers: authHeaders, body: imageForm });
+  assert.match(uploaded.body.url, /^\/uploads\/articles\//);
+  const siteOrigin = new URL(baseUrl);
+  siteOrigin.pathname = "/";
+  const uploadedUrl = new URL(uploaded.body.url, siteOrigin);
+  const uploadedImage = await fetch(uploadedUrl);
+  assert.equal(uploadedImage.status, 200);
+  assert.equal(uploadedImage.headers.get("content-type"), "image/png");
   const created = await request("/posts", {
     method: "POST",
     headers: { ...authHeaders, "Content-Type": "application/json" },
-    body: JSON.stringify({ title: "Cloudflare 冒烟测试", category: "杂谈集", body: "测试正文" })
+    body: JSON.stringify({ title: "Cloudflare 冒烟测试", category: "杂谈集", body: `测试正文\n\n![测试图片](${uploaded.body.url})` })
   });
   const postId = created.body.post.id;
   assert.ok((await request("/posts")).body.posts.some((post) => post.id === postId));
@@ -48,7 +59,13 @@ async function request(path, options = {}) {
   assert.equal(backup.response.headers.get("content-type"), "application/zip");
   assert.ok(backup.body.byteLength > 100);
   await request(`/posts/${postId}`, { method: "DELETE", headers: authHeaders });
-  console.log("Worker smoke test passed: health, auth, posts, comments, messages, backup, cleanup.");
+  let deletedImageStatus = 200;
+  for (let attempt = 0; attempt < 10 && deletedImageStatus !== 404; attempt += 1) {
+    await new Promise((resolve) => setTimeout(resolve, 100));
+    deletedImageStatus = (await fetch(uploadedUrl)).status;
+  }
+  assert.equal(deletedImageStatus, 404);
+  console.log("Worker smoke test passed: health, auth, R2 upload/read/delete, posts, comments, messages, backup, cleanup.");
 })().catch((error) => {
   console.error(error);
   process.exit(1);

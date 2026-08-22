@@ -8,6 +8,12 @@
   status = 200
   force = true
 
+[[redirects]]
+  from = "/uploads/*"
+  to = "https://lorne-orbit.lorne-orbit.workers.dev/uploads/:splat"
+  status = 200
+  force = true
+
 [[headers]]
   for = "/*"
   [headers.values]

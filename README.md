@@ -1,13 +1,13 @@
 # Lorne's orbit
 
-这是一个部署在 Cloudflare 上的个人博客：静态页面由 Workers Static Assets 提供，API 运行在 Cloudflare Worker，文章、评论和留言保存在 D1，恢复的历史图片作为站内静态资源发布。新图片上传可选用 Cloudinary。
+这是一个部署在 Cloudflare 上的个人博客：静态页面由 Workers Static Assets 提供，API 运行在 Cloudflare Worker，文章、评论和留言保存在 D1，恢复的历史图片作为站内静态资源发布，新上传的图片保存在 R2。
 
 ## 架构
 
 ```text
 浏览器 ── 同源 /api ── Cloudflare Worker ── D1（文章、评论、留言）
    └── 静态资源 ───── Workers Static Assets
-管理员上传图片 ───── Worker ── Cloudinary
+管理员上传图片 ───── Worker ── R2
 ```
 
 主要文件：
@@ -29,7 +29,7 @@ Copy-Item .dev.vars.example .dev.vars
 npm run hash-password
 ```
 
-把生成的哈希填入 `.dev.vars` 的 `ADMIN_PASSWORD_HASH`，再填写至少 32 个字符的 `JWT_SECRET`。需要上传图片时，还要填写三个 `CLOUDINARY_*` 值。
+把生成的哈希填入 `.dev.vars` 的 `ADMIN_PASSWORD_HASH`，再填写至少 32 个字符的 `JWT_SECRET`。本地 Wrangler 会按照 `wrangler.jsonc` 自动创建本地 R2 存储。
 
 ```powershell
 npm run dev
@@ -60,12 +60,13 @@ npx wrangler d1 migrations apply lorne-orbit --remote
 npm run hash-password
 npx wrangler secret put ADMIN_PASSWORD_HASH
 npx wrangler secret put JWT_SECRET
-npx wrangler secret put CLOUDINARY_CLOUD_NAME
-npx wrangler secret put CLOUDINARY_API_KEY
-npx wrangler secret put CLOUDINARY_API_SECRET
 ```
 
-`JWT_SECRET` 应使用至少 32 字节的随机值。`ADMIN_USERNAME` 和 `CLOUDINARY_FOLDER` 是非敏感配置，保存在 `wrangler.jsonc`。
+`JWT_SECRET` 应使用至少 32 字节的随机值。`ADMIN_USERNAME` 是非敏感配置，保存在 `wrangler.jsonc`。部署前还需要创建与配置文件同名的 R2 存储桶：
+
+```powershell
+npx wrangler r2 bucket create lorne-orbit-images
+```
 
 ### 3. 恢复博客数据
 
@@ -111,7 +112,7 @@ npm run smoke
 Remove-Item Env:SMOKE_PASSWORD
 ```
 
-冒烟测试覆盖健康检查、登录、文章、评论、留言幂等、留言删除、ZIP 备份和测试数据清理。
+冒烟测试覆盖健康检查、登录、R2 图片上传与删除、文章、评论、留言幂等、留言删除、ZIP 备份和测试数据清理。
 
 ## 安全与备份
 
@@ -119,5 +120,5 @@ Remove-Item Env:SMOKE_PASSWORD
 - 登录令牌为 8 小时有效的 HS256 JWT，同时支持 HttpOnly Cookie 与标签页内 Bearer Token。
 - 所有写接口要求自定义请求头并执行 D1 限流。
 - 评论者邮箱保存在 D1，但公开接口不会返回邮箱。
-- 管理员页面的“完整备份到本地”会生成 ZIP，其中包含数据库 JSON、Markdown 文章及可下载到的 Cloudinary 图片。
+- 管理员页面的“完整备份到本地”会生成 ZIP，其中包含数据库 JSON、Markdown 文章及文章引用的站内、R2 或旧 Cloudinary 图片。
 - 建议定期下载 ZIP；免费服务不等同于备份服务。
