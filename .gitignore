@@ -1,4 +1,10 @@
 dist/
+node_modules/
+.wrangler/
+.dev.vars
+cloudflare-export.sql
+cloudflare-backup-import.sql
+.migration-backup*/
 backend/node_modules/
 backend/.env
 .DS_Store

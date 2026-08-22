@@ -1,106 +1,123 @@
 # Lorne's orbit
 
-这是一个前后端分离的个人博客：静态前端可以部署到 Netlify，Express API 可以部署到 Render，公开数据保存在 PostgreSQL，文章图片保存在 Cloudinary。
+这是一个部署在 Cloudflare 上的个人博客：静态页面由 Workers Static Assets 提供，API 运行在 Cloudflare Worker，文章、评论和留言保存在 D1，恢复的历史图片作为站内静态资源发布。新图片上传可选用 Cloudinary。
 
-## 目录与数据流
+## 架构
 
 ```text
-浏览器（HTML/CSS/JavaScript）
-  ├─ HTTPS API → Express → PostgreSQL（文章、评论、留言）
-  └─ 管理员上传 → Express → Cloudinary（文章图片）
+浏览器 ── 同源 /api ── Cloudflare Worker ── D1（文章、评论、留言）
+   └── 静态资源 ───── Workers Static Assets
+管理员上传图片 ───── Worker ── Cloudinary
 ```
 
-- 前端入口：`index.html`
-- API 客户端：`api.js`
-- 本地 API 地址：`config.js`
-- 后端服务：`backend/src/server.js`
-- 数据表初始化：`backend/src/db.js`
-- Render 配置：`render.yaml`
-- Netlify 配置：`netlify.toml`
+主要文件：
+
+- `worker/index.mjs`：Cloudflare API
+- `worker/migrations/0001_initial.sql`：D1 表结构
+- `wrangler.jsonc`：Cloudflare 部署配置
+- `scripts/postgres-to-d1-sql.js`：从原 Render PostgreSQL 导出 D1 导入文件
+- `api.js`：浏览器 API 客户端
+- `scripts/build-frontend.js`：静态前端构建
 
 ## 本地运行
 
-要求 Node.js 20+、Docker Desktop，以及 VS Code Live Server。
+要求 Node.js 20+。
 
-1. 启动 PostgreSQL：
-
-   ```powershell
-   docker compose up -d
-   ```
-
-2. 配置并启动 API：
-
-   ```powershell
-   Copy-Item backend\.env.example backend\.env
-   Set-Location backend
-   npm install
-   npm run hash-password -- "换成至少12位的强密码"
-   ```
-
-   把输出的哈希填入 `backend/.env` 的 `ADMIN_PASSWORD_HASH`，同时替换 `JWT_SECRET`。如需上传图片，还要填写 Cloudinary 配置。然后运行：
-
-   ```powershell
-   npm run dev
-   ```
-
-3. 用 Live Server 打开 `index.html`。建议始终使用 `http://127.0.0.1:5500`，它已经列入后端开发跨域白名单。
-
-## 迁移原来浏览器里的文章
-
-先用原来保存过文章的同一个 Live Server 地址打开博客。登录管理员后点击顶部的“迁移旧文章”。前端会把：
-
-- 8 篇内置文章；
-- `lorne-orbit-custom-posts` 中的本地文章；
-- `lorne-orbit-post-images` 中的文章图片；
-- 原来的隐藏/删除状态；
-
-一次性上传到服务器。迁移使用文章 ID 执行 upsert，重复点击不会产生重复文章。不要在迁移成功前清理浏览器网站数据。
-
-## 部署到公网
-
-### 1. Cloudinary
-
-创建 Cloudinary 账户并取得 Cloud name、API key、API secret。它们只配置在后端，不能写进前端文件。
-
-### 2. Render：API 与 PostgreSQL
-
-将代码推送到 GitHub，在 Render 中使用仓库根目录的 `render.yaml` 创建 Blueprint。配置默认使用 Render 免费实例，并关闭 PostgreSQL 公网入口；需要更稳定的可用性时可以在控制台升级。创建时填写：
-
-- `FRONTEND_ORIGINS`：最终前端地址，例如 `https://your-blog.netlify.app`，不要带末尾 `/`；
-- `ADMIN_PASSWORD_HASH`：在本地用 `npm run hash-password` 生成；
-- 三个 `CLOUDINARY_*` 变量。
-
-部署完成后记录 API 来源地址，例如 `https://lorne-orbit-api.onrender.com`。
-
-### 3. Netlify：静态前端
-
-在 Netlify 中导入同一个仓库。`netlify.toml` 已设置构建命令和发布目录。增加环境变量：
-
-```text
-BLOG_API_URL=/api
-BLOG_API_ORIGIN=https://lorne-orbit-api.onrender.com
+```powershell
+npm install
+Copy-Item .dev.vars.example .dev.vars
+npm run hash-password
 ```
 
-构建脚本会生成 Netlify 反向代理规则。浏览器只访问同源 `/api`，Netlify 再把请求转发给独立的 Render API；这样管理员 Cookie 不会被当成第三方 Cookie。
+把生成的哈希填入 `.dev.vars` 的 `ADMIN_PASSWORD_HASH`，再填写至少 32 个字符的 `JWT_SECRET`。需要上传图片时，还要填写三个 `CLOUDINARY_*` 值。
 
-首次部署后，把最终 Netlify 域名填回 Render 的 `FRONTEND_ORIGINS`，重新部署 API。如果同时使用自定义域名，可以用英文逗号添加多个精确来源。
+```powershell
+npm run dev
+```
 
-## 备份到本地
+本地地址为 `http://127.0.0.1:8787`。`.dev.vars` 已被 Git 忽略，不能把真实密钥提交到仓库。
 
-管理员登录后，点击顶部的“完整备份到本地”，浏览器会下载一个带日期的 ZIP 文件。每次下载都是一份完整快照，包含：
+## 首次部署到 Cloudflare
 
-- `data/backup.json`：文章、评论、留言和图片清单，可用于程序恢复；
-- `articles/`：每篇文章各自保存为 Markdown，图片链接改为本地相对路径；
-- `images/`：文章正文引用的 Cloudinary 图片；
-- `README.txt`：备份数量、生成时间和图片下载结果。
+### 1. 登录并创建 D1
 
-浏览器无法可靠判断用户以前下载的文件是否仍保存在电脑里，因此这里始终生成完整备份，而不是只下载“上次之后新增”的文章。备份中可能含有评论者邮箱，请存放在安全位置。
+```powershell
+npx wrangler login
+npx wrangler d1 create lorne-orbit
+```
 
-## 安全与运维
+把命令返回的 `database_id` 替换到 `wrangler.jsonc`，然后执行：
 
-- 管理员密码只以 bcrypt 哈希形式存放在后端环境变量中。
-- 登录凭证是 8 小时有效的 HttpOnly、Secure Cookie，前端 JavaScript 无法读取。
-- 后端限制跨域来源、写入频率、上传类型和上传大小。
-- 评论者邮箱保存在数据库，但 API 不向公众返回邮箱。
-- PostgreSQL 和 Cloudinary 都应开启各自的备份或保留策略。
-- 修改前端域名后，必须同步更新 `FRONTEND_ORIGINS`。
+```powershell
+npx wrangler d1 migrations apply lorne-orbit --remote
+```
+
+### 2. 配置密钥
+
+生成管理员密码哈希并逐项粘贴到 Wrangler：
+
+```powershell
+npm run hash-password
+npx wrangler secret put ADMIN_PASSWORD_HASH
+npx wrangler secret put JWT_SECRET
+npx wrangler secret put CLOUDINARY_CLOUD_NAME
+npx wrangler secret put CLOUDINARY_API_KEY
+npx wrangler secret put CLOUDINARY_API_SECRET
+```
+
+`JWT_SECRET` 应使用至少 32 字节的随机值。`ADMIN_USERNAME` 和 `CLOUDINARY_FOLDER` 是非敏感配置，保存在 `wrangler.jsonc`。
+
+### 3. 恢复博客数据
+
+如果有“完整备份到本地”生成的 ZIP，解压后把 `data/backup.json` 路径传给恢复脚本，并将 ZIP 的 `images/` 复制到 `public/images/`：
+
+```powershell
+$env:BACKUP_JSON="解压目录\data\backup.json"
+npm run import:backup
+npx wrangler d1 execute lorne-orbit --remote --file cloudflare-backup-import.sql
+Remove-Item Env:BACKUP_JSON
+```
+
+脚本会把备份中的 Cloudinary URL 改写为 `/images/文件名`。生成的 SQL 已被 Git 忽略，其中可能包含评论者邮箱。
+
+如果没有 ZIP，但原 Render PostgreSQL 仍可连接，也可从数据库导出：
+
+必须先在 Render 宽限期内恢复原 PostgreSQL，取得 External Database URL。不要把 URL 写进文件或提交到 Git。
+
+```powershell
+$env:SOURCE_DATABASE_URL="Render PostgreSQL External Database URL"
+npm run export:d1
+npx wrangler d1 execute lorne-orbit --remote --file cloudflare-export.sql
+Remove-Item Env:SOURCE_DATABASE_URL
+```
+
+生成的 `cloudflare-export.sql` 已被 Git 忽略。导入完成后应将它移到安全备份位置或删除，因为其中可能含有评论者邮箱。
+
+### 4. 发布
+
+```powershell
+npm run deploy
+```
+
+Worker、静态站点和 API 会发布在同一个 `workers.dev` 地址。之后可在 Cloudflare Dashboard 为 Worker 添加自定义域名。
+
+## 本地验证
+
+应用 D1 migration 后，启动本地 Worker，再在另一个终端执行：
+
+```powershell
+$env:SMOKE_PASSWORD="本地 .dev.vars 对应的原始密码"
+npm run smoke
+Remove-Item Env:SMOKE_PASSWORD
+```
+
+冒烟测试覆盖健康检查、登录、文章、评论、留言幂等、留言删除、ZIP 备份和测试数据清理。
+
+## 安全与备份
+
+- 管理员密码仅以 SHA-256 哈希保存在 Cloudflare Secret 中，并配合 D1 登录限流。请使用随机且不复用的长密码。
+- 登录令牌为 8 小时有效的 HS256 JWT，同时支持 HttpOnly Cookie 与标签页内 Bearer Token。
+- 所有写接口要求自定义请求头并执行 D1 限流。
+- 评论者邮箱保存在 D1，但公开接口不会返回邮箱。
+- 管理员页面的“完整备份到本地”会生成 ZIP，其中包含数据库 JSON、Markdown 文章及可下载到的 Cloudinary 图片。
+- 建议定期下载 ZIP；免费服务不等同于备份服务。
