@@ -62,7 +62,9 @@ async function request(path, options = {}) {
   let deletedImageStatus = 200;
   for (let attempt = 0; attempt < 10 && deletedImageStatus !== 404; attempt += 1) {
     await new Promise((resolve) => setTimeout(resolve, 100));
-    deletedImageStatus = (await fetch(uploadedUrl)).status;
+    const deletionProbe = new URL(uploadedUrl);
+    deletionProbe.searchParams.set("deleted-probe", String(attempt));
+    deletedImageStatus = (await fetch(deletionProbe, { cache: "no-store" })).status;
   }
   assert.equal(deletedImageStatus, 404);
   console.log("Worker smoke test passed: health, auth, R2 upload/read/delete, posts, comments, messages, backup, cleanup.");
