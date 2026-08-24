@@ -173,7 +173,13 @@
             <label class="markdown-input-wrap"><span>Markdown 正文</span><textarea id="markdown-editor" name="body" placeholder="# 从这里开始写作……" required></textarea></label>
             <section class="markdown-preview-wrap" aria-label="文章预览"><span>实时预览</span><article class="markdown-preview post-body" id="markdown-preview"><p class="preview-placeholder">预览将在这里出现。</p></article></section>
           </div>
-          <div class="editor-submit-row"><p>文章保存到数据库，图片保存到云端对象存储。</p><button type="submit">发布博客</button></div>
+          <div class="editor-submit-row">
+            <p id="editor-submit-hint">文章保存到数据库，图片保存到云端对象存储。</p>
+            <div class="editor-submit-actions">
+              <button class="editor-cancel-button" id="editor-cancel-button" type="button" hidden>取消修改</button>
+              <button id="post-editor-submit" type="submit">发布博客</button>
+            </div>
+          </div>
         </form>
       </section>
 

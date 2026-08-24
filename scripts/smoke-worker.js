@@ -39,6 +39,14 @@ async function request(path, options = {}) {
   });
   const postId = created.body.post.id;
   assert.ok((await request("/posts")).body.posts.some((post) => post.id === postId));
+  const edited = await request(`/posts/${postId}`, {
+    method: "PATCH",
+    headers: { ...authHeaders, "Content-Type": "application/json" },
+    body: JSON.stringify({ title: "Cloudflare 冒烟测试（已修改）", category: "心情日记", body: `修改后的正文\n\n![测试图片](${uploaded.body.url})` })
+  });
+  assert.equal(edited.body.post.title, "Cloudflare 冒烟测试（已修改）");
+  assert.equal(edited.body.post.category, "心情日记");
+  assert.match(edited.body.post.body, /修改后的正文/);
   const comment = await request(`/posts/${postId}/comments`, {
     method: "POST",
     headers: { "Content-Type": "application/json", "X-Requested-With": "lorne-orbit-web" },
@@ -67,7 +75,7 @@ async function request(path, options = {}) {
     deletedImageStatus = (await fetch(deletionProbe, { cache: "no-store" })).status;
   }
   assert.equal(deletedImageStatus, 404);
-  console.log("Worker smoke test passed: health, auth, R2 upload/read/delete, posts, comments, messages, backup, cleanup.");
+  console.log("Worker smoke test passed: health, auth, R2 upload/read/delete, post editing, comments, messages, backup, cleanup.");
 })().catch((error) => {
   console.error(error);
   process.exit(1);

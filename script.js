@@ -99,6 +99,7 @@ let allArticles = [];
 let serverMessages = [];
 let adminAuthenticated = false;
 let pendingImageUploads = 0;
+let editingPostId = null;
 let messageSubmitInFlight = false;
 let messageDraftRequest = null;
 let articleLoadError = null;
@@ -477,6 +478,7 @@ function renderManagePosts() {
         <small>${article.isCustom ? "本地发布文章" : "内置文章"}</small>
       </div>
       <div class="manage-actions">
+        <button type="button" data-edit-post="${article.id}">编辑</button>
         <button type="button" data-toggle-hidden="${article.id}">${article.hidden ? "对游客显示" : "对游客隐藏"}</button>
         <button class="danger" type="button" data-delete-post="${article.id}">删除</button>
       </div>
@@ -494,6 +496,37 @@ async function refreshAllArticleViews() {
   if (document.body.dataset.view === "home" || document.body.dataset.view === "articles") {
     renderArticles(document.body.dataset.view === "home" ? "全部" : activeCategory);
   }
+}
+
+function resetPostEditor() {
+  editingPostId = null;
+  const form = document.querySelector("#post-editor-form");
+  form.reset();
+  document.querySelector("#write-title").textContent = "撰写新的博客";
+  document.querySelector("#post-editor-submit").textContent = "发布博客";
+  document.querySelector("#editor-cancel-button").hidden = true;
+  document.querySelector("#editor-submit-hint").textContent = "文章保存到数据库，图片保存到云端对象存储。";
+  updateMarkdownPreview();
+}
+
+function editPost(id) {
+  const article = getAllArticleRecords().find((item) => item.id === Number(id));
+  if (!article) {
+    showToast("找不到需要修改的文章。", 2600);
+    return;
+  }
+  editingPostId = article.id;
+  const form = document.querySelector("#post-editor-form");
+  form.elements.title.value = article.title;
+  form.elements.category.value = article.category;
+  form.elements.body.value = article.body;
+  document.querySelector("#write-title").textContent = "修改已发布的博客";
+  document.querySelector("#post-editor-submit").textContent = "保存修改";
+  document.querySelector("#editor-cancel-button").hidden = false;
+  document.querySelector("#editor-submit-hint").textContent = `正在修改《${article.title}》，发布时间和评论不会改变。`;
+  updateMarkdownPreview();
+  location.hash = "write";
+  setTimeout(() => form.elements.title.focus(), 80);
 }
 
 function insertAtEditorCursor(before, after = "") {
@@ -1113,31 +1146,48 @@ document.querySelector("#post-editor-form").addEventListener("submit", async (ev
   const allowedCategories = ["杂谈集", "往事如烟", "心情日记", "逆水行舟"];
   if (!title || !body || !allowedCategories.includes(category)) return;
   const plainText = plainTextFromMarkdown(body);
+  const postInput = {
+    category,
+    title,
+    lead: plainText.slice(0, 48),
+    excerpt: plainText.length > 90 ? `${plainText.slice(0, 90).trimEnd()}……` : plainText,
+    body
+  };
+  const editedPostId = editingPostId;
   let article;
   try {
-    const payload = await blogApi.createPost({
-      category,
-      title,
-      lead: plainText.slice(0, 48),
-      excerpt: plainText.length > 90 ? `${plainText.slice(0, 90).trimEnd()}……` : plainText,
-      body
-    });
+    const payload = editedPostId
+      ? await blogApi.updatePost(editedPostId, postInput)
+      : await blogApi.createPost(postInput);
     article = payload.post;
   } catch (error) {
-    showToast(error.message || "文章发布失败，请稍后重试。", 3200);
+    showToast(error.message || (editedPostId ? "文章修改失败，请稍后重试。" : "文章发布失败，请稍后重试。"), 3200);
     return;
   }
-  form.reset();
-  updateMarkdownPreview();
+  resetPostEditor();
   await refreshAllArticleViews();
   location.hash = `post-${article.id}`;
-  showToast("博客已发布到服务器。", 2600);
+  showToast(editedPostId ? "文章修改已保存。" : "博客已发布到服务器。", 2600);
+});
+
+document.querySelector("#editor-cancel-button").addEventListener("click", () => {
+  resetPostEditor();
+  location.hash = "manage";
+});
+
+document.addEventListener("click", (event) => {
+  if (event.target.closest('a[href="#write"]')) resetPostEditor();
 });
 
 document.querySelector("#manage-post-list").addEventListener("click", async (event) => {
   const openButton = event.target.closest("[data-manage-open]");
   if (openButton) {
     location.hash = `post-${openButton.dataset.manageOpen}`;
+    return;
+  }
+  const editButton = event.target.closest("[data-edit-post]");
+  if (editButton) {
+    editPost(editButton.dataset.editPost);
     return;
   }
   const hiddenButton = event.target.closest("[data-toggle-hidden]");

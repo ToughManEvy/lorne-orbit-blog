@@ -375,8 +375,11 @@ body[data-view="manage"] .admin-manage-view { display: block; }
 .preview-placeholder { color: #998b7f; }
 .editor-submit-row { display: flex; align-items: center; justify-content: space-between; padding-top: 25px; }
 .editor-submit-row p { margin: 0; color: #80756b; font-size: 11px; }
+.editor-submit-actions { display: flex; align-items: center; gap: 10px; }
 .editor-submit-row button,
 .login-form > button { min-width: 128px; padding: 13px 24px; border: 0; color: #f7eee4; background: #302821; cursor: pointer; transition: background .2s ease, transform .2s ease; }
+.editor-submit-row .editor-cancel-button { min-width: 0; color: #5c5148; border: 1px solid rgba(81,61,45,.28); background: transparent; }
+.editor-submit-row .editor-cancel-button:hover { color: var(--terracotta); border-color: var(--terracotta); background: transparent; }
 .editor-submit-row button:hover,
 .login-form > button:hover { background: #191613; transform: translateY(-1px); }
 .editor-submit-row button:disabled { cursor: wait; opacity: .55; transform: none; }
@@ -599,6 +602,7 @@ dialog::backdrop { background: rgba(38,30,24,.34); backdrop-filter: blur(2px); }
   #markdown-editor, .markdown-preview { min-height: 370px; padding: 20px; }
   .editor-submit-row { align-items: flex-start; gap: 18px; }
   .editor-submit-row p { max-width: 55%; }
+  .editor-submit-actions { flex-wrap: wrap; justify-content: flex-end; }
   .manage-post-row { grid-template-columns: 1fr; gap: 17px; }
   .manage-actions { justify-content: flex-start; }
   .login-form { padding: 40px 28px 36px; }

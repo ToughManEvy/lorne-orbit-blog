@@ -480,9 +480,25 @@ async function handleApi(request, env, ctx) {
     await requireAdmin(request, env);
     await enforceRateLimit(env, request, "write", 15 * 60, 60);
     const id = articleId(postMatch[1]);
-    const body = await parseJson(request, 4096);
-    if (typeof body?.hidden !== "boolean") throw new HttpError(400, "缺少文章状态");
-    const result = await env.DB.prepare("UPDATE posts SET hidden = ?1 WHERE id = ?2").bind(body.hidden ? 1 : 0, id).run();
+    const body = await parseJson(request, 256 * 1024);
+    const current = await env.DB.prepare("SELECT * FROM posts WHERE id = ?1").bind(id).first();
+    if (!current) throw new HttpError(404, "文章不存在");
+    const has = (key) => Object.prototype.hasOwnProperty.call(body || {}, key);
+    const editsContent = ["title", "category", "body", "lead", "excerpt"].some(has);
+    if (!editsContent && !has("hidden")) throw new HttpError(400, "没有需要更新的文章内容");
+    if (has("hidden") && typeof body.hidden !== "boolean") throw new HttpError(400, "文章状态不正确");
+    const title = has("title") ? asText(body.title, 120) : current.title;
+    const category = has("category") ? asText(body.category, 50) : current.category;
+    const content = has("body") ? asText(body.body, 200000) : current.body;
+    const lead = has("lead") ? asText(body.lead, 300) : current.lead;
+    const excerpt = has("excerpt") ? asText(body.excerpt, 600) : current.excerpt;
+    if (!title || !content || !ALLOWED_CATEGORIES.has(category)) throw new HttpError(400, "文章内容不完整");
+    const hidden = has("hidden") ? (body.hidden ? 1 : 0) : Number(current.hidden);
+    const isMarkdown = has("body") ? 1 : Number(current.is_markdown);
+    const result = await env.DB.prepare(`UPDATE posts
+      SET title = ?1, category = ?2, body = ?3, lead = ?4, excerpt = ?5, hidden = ?6, is_markdown = ?7
+      WHERE id = ?8`)
+      .bind(title, category, content, lead, excerpt, hidden, isMarkdown, id).run();
     if (!result.meta.changes) throw new HttpError(404, "文章不存在");
     const row = await env.DB.prepare("SELECT * FROM posts WHERE id = ?1").bind(id).first();
     return json({ post: postFromRow(row) });
