@@ -274,7 +274,7 @@ function renderMarkdown(source) {
   const resolvedSource = resolveLocalImages(source);
   if (window.marked?.parse && window.DOMPurify?.sanitize) {
     configureMarkdownExtensions();
-    return window.DOMPurify.sanitize(window.marked.parse(resolvedSource, { gfm: true, breaks: false }), { ADD_ATTR: ["target"] });
+    return window.DOMPurify.sanitize(window.marked.parse(resolvedSource, { gfm: true, breaks: true }), { ADD_ATTR: ["target"] });
   }
   return fallbackMarkdown(resolvedSource);
 }
