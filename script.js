@@ -91,7 +91,7 @@ const CUSTOM_POSTS_KEY = "lorne-orbit-custom-posts";
 const POST_STATE_KEY = "lorne-orbit-post-state";
 const POST_IMAGES_KEY = "lorne-orbit-post-images";
 const LEGACY_MIGRATION_KEY = "lorne-orbit-server-migration-complete";
-const ARTICLE_CACHE_KEY = "lorne-orbit-public-post-cache-v1";
+const ARTICLE_CACHE_KEY = "lorne-orbit-public-post-cache-v2";
 const ADMIN_READ_COMMENTS_KEY = "lorne-orbit-admin-read-comments-v1";
 
 let activeCategory = "全部";
@@ -203,7 +203,7 @@ function getAllArticleRecords() {
 async function refreshArticles() {
   const payload = await blogApi.getPosts(isAdmin());
   allArticles = payload.posts;
-  articles = allArticles.filter((article) => isAdmin() || !article.hidden);
+  articles = allArticles;
   if (!isAdmin()) writeArticleCache(articles);
 }
 
@@ -371,6 +371,7 @@ const meta = (article) => `
   </div>`;
 
 function excerptFromBody(article, length) {
+  if (article.hidden && !isAdmin()) return "该篇文章已对游客隐藏";
   const text = article.isMarkdown ? plainTextFromMarkdown(article.body) : article.body.replace(/\s+/g, " ").trim();
   return text.length > length ? `${text.slice(0, length).trimEnd()} […]` : text;
 }
@@ -391,8 +392,9 @@ function renderArticles(category = "全部") {
   }
 
   const lead = visible[0];
+  const leadHidden = lead?.hidden && !isAdmin();
   featuredSlot.innerHTML = lead ? `
-    <article class="featured-article">
+    <article class="featured-article${leadHidden ? " is-visitor-hidden" : ""}">
       <div class="featured-body">
         ${meta(lead)}
         <h3><button class="article-title-link" type="button" data-read="${lead.id}">${lead.title}</button></h3>
@@ -402,7 +404,7 @@ function renderArticles(category = "全部") {
     </article>` : "";
 
   articleGrid.innerHTML = visible.slice(1).map((article, index) => `
-    <article class="article-card" style="animation-delay:${500 + index * 60}ms">
+    <article class="article-card${article.hidden && !isAdmin() ? " is-visitor-hidden" : ""}" style="animation-delay:${500 + index * 60}ms">
       ${meta(article)}
       <h3><button class="article-title-link" type="button" data-read="${article.id}">${article.title}</button></h3>
       <p class="article-excerpt">${excerptFromBody(article, 70)}</p>
@@ -440,7 +442,7 @@ function renderArchive() {
         ${groups[year].map((article) => {
           const date = article.date.match(/(\d{1,2})月(\d{1,2})日(?:\s+(\d{2}:\d{2}))?/);
           const shortDate = date ? `${date[1].padStart(2, "0")}月${date[2].padStart(2, "0")}日${date[3] ? ` ${date[3]}` : ""}` : article.date;
-          return `<li>
+          return `<li${article.hidden && !isAdmin() ? ' class="is-visitor-hidden"' : ""}>
             <time>${shortDate}</time><span class="archive-colon">：</span>
             <button type="button" data-read="${article.id}">${article.title}</button>
             <span class="archive-category">(${article.category})</span>
@@ -792,12 +794,21 @@ async function applyView() {
 function openArticle(id) {
   const article = articles.find((item) => item.id === Number(id));
   if (!article) return;
+  if (article.hidden && !isAdmin()) {
+    showToast("该篇文章对游客不可见。", 3000);
+    return;
+  }
   location.hash = `post-${article.id}`;
 }
 
 async function renderSinglePost(id) {
   const article = articles.find((item) => item.id === id);
   if (!article) {
+    location.hash = "home";
+    return;
+  }
+  if (article.hidden && !isAdmin()) {
+    showToast("该篇文章对游客不可见。", 3000);
     location.hash = "home";
     return;
   }
@@ -1441,7 +1452,7 @@ async function initializeApp() {
   const cachedPosts = readArticleCache();
   if (cachedPosts.length) {
     allArticles = cachedPosts;
-    articles = cachedPosts.filter((article) => !article.hidden);
+    articles = cachedPosts;
   }
   renderAdminTools();
   renderLocalMessages();
@@ -1455,7 +1466,7 @@ async function initializeApp() {
   try {
     const postsPayload = await postsPromise;
     allArticles = postsPayload.posts;
-    articles = allArticles.filter((article) => !article.hidden);
+    articles = allArticles;
     writeArticleCache(articles);
     articleLoadError = null;
   } catch (error) {

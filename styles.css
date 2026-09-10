@@ -180,6 +180,8 @@ a { color: inherit; text-decoration: none; }
 .article-card h3 { margin: 9px 0 6px; font: 600 20px/1.45 var(--serif); letter-spacing: .03em; }
 .article-title-link { padding: 0; border: 0; color: var(--ink); background: transparent; font: inherit; letter-spacing: inherit; text-align: left; cursor: pointer; transition: color .25s ease; }
 .article-title-link:hover, .article-title-link:focus-visible { color: var(--terracotta); }
+.is-visitor-hidden .article-title-link, .archive-year-group li.is-visitor-hidden button { color: #827a72; text-decoration: line-through; text-decoration-thickness: 1px; text-decoration-color: rgba(57,47,40,.65); }
+.is-visitor-hidden .article-excerpt { color: #8a8179; font-style: italic; }
 .article-card .article-excerpt { display: -webkit-box; overflow: hidden; -webkit-line-clamp: 3; -webkit-box-orient: vertical; }
 .article-card .read-more { margin-top: 13px; }
 .read-more { transition: color .25s ease, transform .25s ease; }

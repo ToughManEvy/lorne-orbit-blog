@@ -74,6 +74,12 @@ function postFromRow(row) {
   };
 }
 
+function publicPostFromRow(row) {
+  const post = postFromRow(row);
+  if (!post.hidden) return post;
+  return { ...post, lead: "", excerpt: "", body: "", isMarkdown: false };
+}
+
 function commentFromRow(row) {
   return {
     id: row.id,
@@ -472,8 +478,8 @@ async function handleApi(request, env, ctx) {
 
   if (method === "GET" && path === "/api/posts") {
     const includeHidden = url.searchParams.get("includeHidden") === "true" && Boolean(await readAdmin(request, env));
-    const result = await env.DB.prepare(`SELECT * FROM posts ${includeHidden ? "" : "WHERE hidden = 0"} ORDER BY sort_order DESC, id DESC`).all();
-    return json({ posts: (result.results || []).map(postFromRow) });
+    const result = await env.DB.prepare("SELECT * FROM posts ORDER BY sort_order DESC, id DESC").all();
+    return json({ posts: (result.results || []).map(includeHidden ? postFromRow : publicPostFromRow) });
   }
 
   if (method === "POST" && path === "/api/posts") {
