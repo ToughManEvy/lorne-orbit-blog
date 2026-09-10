@@ -763,9 +763,6 @@ async function renderSinglePost(id) {
         ${article.isMarkdown ? "" : `<p class="post-lead">${article.lead}</p>`}
         ${paragraphs}
       </div>
-      <div class="post-footer-meta">
-        <span>分类：</span><button type="button" data-post-category="${article.category}">${article.category}</button>
-      </div>
       <nav class="post-navigation" aria-label="文章导航">
         <div>${previous ? `<small>上一篇文章</small><button type="button" data-read="${previous.id}">← ${previous.title}</button>` : ""}</div>
         <div>${next ? `<small>下一篇文章</small><button type="button" data-read="${next.id}">${next.title} →</button>` : ""}</div>
@@ -928,11 +925,6 @@ singlePost.addEventListener("click", (event) => {
   }
   const articleButton = event.target.closest("[data-read]");
   if (articleButton) openArticle(articleButton.dataset.read);
-  const categoryButton = event.target.closest("[data-post-category]");
-  if (categoryButton) {
-    activeCategory = categoryButton.dataset.postCategory;
-    location.hash = "articles";
-  }
 });
 
 singlePost.addEventListener("submit", async (event) => {

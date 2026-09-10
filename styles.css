@@ -240,8 +240,6 @@ a { color: inherit; text-decoration: none; }
 .post-body a { color: var(--terracotta); text-decoration: underline; text-underline-offset: 3px; }
 .post-body mark { padding: .08em .2em; color: inherit; background: linear-gradient(transparent 12%, rgba(244, 204, 92, .55) 12%, rgba(244, 204, 92, .55) 88%, transparent 88%); }
 .admin-hidden-label { color: #9d593f; }
-.post-footer-meta { max-width: 840px; margin-top: 55px; padding-top: 22px; border-top: 1px solid var(--line); color: #77716a; font-size: 12px; }
-.post-footer-meta button { padding: 0; border: 0; color: var(--terracotta); background: transparent; cursor: pointer; }
 .post-navigation { margin-top: 55px; padding-top: 30px; display: grid; grid-template-columns: 1fr 1fr; gap: 50px; border-top: 1px solid var(--line); }
 .post-navigation > div:last-child { text-align: right; }
 .post-navigation small { display: block; margin-bottom: 8px; color: #8a847d; font-size: 10px; }
