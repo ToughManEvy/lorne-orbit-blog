@@ -242,10 +242,6 @@ a { color: inherit; text-decoration: none; }
 .admin-hidden-label { color: #9d593f; }
 .post-footer-meta { max-width: 840px; margin-top: 55px; padding-top: 22px; border-top: 1px solid var(--line); color: #77716a; font-size: 12px; }
 .post-footer-meta button { padding: 0; border: 0; color: var(--terracotta); background: transparent; cursor: pointer; }
-.post-author { max-width: 840px; margin-top: 42px; padding: 28px 0; display: flex; align-items: center; gap: 20px; border-top: 1px solid var(--line); }
-.author-mark { width: 52px; height: 52px; flex: 0 0 52px; display: grid; place-items: center; border-radius: 50%; color: var(--paper-light); background: #342d27; font: 700 22px var(--sans); }
-.post-author strong { font-size: 14px; }
-.post-author p { margin: 4px 0 0; color: #817b74; font-size: 11px; }
 .post-navigation { margin-top: 55px; padding-top: 30px; display: grid; grid-template-columns: 1fr 1fr; gap: 50px; border-top: 1px solid var(--line); }
 .post-navigation > div:last-child { text-align: right; }
 .post-navigation small { display: block; margin-bottom: 8px; color: #8a847d; font-size: 10px; }
@@ -583,7 +579,6 @@ dialog::backdrop { background: rgba(38,30,24,.34); backdrop-filter: blur(2px); }
   .post-body .post-lead { font-size: 15px; }
   .post-navigation { grid-template-columns: 1fr; gap: 26px; }
   .post-navigation > div:last-child { text-align: left; }
-  .post-author { align-items: flex-start; }
   .comments-area { margin-top: 65px; padding-top: 34px; }
   .comment-form { padding: 32px 0 50px; }
   .comment-form-heading h2 { font-size: 24px; }

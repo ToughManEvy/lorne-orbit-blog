@@ -766,10 +766,6 @@ async function renderSinglePost(id) {
       <div class="post-footer-meta">
         <span>分类：</span><button type="button" data-post-category="${article.category}">${article.category}</button>
       </div>
-      <aside class="post-author">
-        <div class="author-mark" aria-hidden="true">L</div>
-        <div><strong>Lorne's orbit</strong><p>浩瀚江海，立身守礼</p></div>
-      </aside>
       <nav class="post-navigation" aria-label="文章导航">
         <div>${previous ? `<small>上一篇文章</small><button type="button" data-read="${previous.id}">← ${previous.title}</button>` : ""}</div>
         <div>${next ? `<small>下一篇文章</small><button type="button" data-read="${next.id}">${next.title} →</button>` : ""}</div>
