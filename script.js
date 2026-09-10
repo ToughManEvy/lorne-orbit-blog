@@ -877,9 +877,18 @@ async function renderSinglePost(id) {
     pendingAdminCommentTarget = null;
     if (target) {
       requestAnimationFrame(() => requestAnimationFrame(() => {
-        target.classList.add("is-notification-target");
+        let pulseStarted = false;
+        let pulseFallback;
+        const startPulse = () => {
+          if (pulseStarted) return;
+          pulseStarted = true;
+          clearTimeout(pulseFallback);
+          target.classList.add("is-notification-target");
+          setTimeout(() => target.classList.remove("is-notification-target"), 3000);
+        };
+        window.addEventListener("scrollend", startPulse, { once: true });
         target.scrollIntoView({ behavior: "smooth", block: "center" });
-        setTimeout(() => target.classList.remove("is-notification-target"), 2600);
+        pulseFallback = setTimeout(startPulse, 900);
       }));
     } else {
       showToast("该评论暂时无法定位。", 2600);
