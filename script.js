@@ -768,7 +768,7 @@ async function renderSinglePost(id) {
       </div>
       <aside class="post-author">
         <div class="author-mark" aria-hidden="true">L</div>
-        <div><strong>Lorne's orbit</strong><p>一个野心勃勃，一个向自我生长的浩瀚新论</p></div>
+        <div><strong>Lorne's orbit</strong><p>浩瀚江海，立身守礼</p></div>
       </aside>
       <nav class="post-navigation" aria-label="文章导航">
         <div>${previous ? `<small>上一篇文章</small><button type="button" data-read="${previous.id}">← ${previous.title}</button>` : ""}</div>
