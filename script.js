@@ -83,6 +83,7 @@ const searchInput = document.querySelector("#search-input");
 const searchResults = document.querySelector("#search-results");
 const loginDialog = document.querySelector("#login-dialog");
 const deleteDialog = document.querySelector("#delete-dialog");
+const adminCommentsDialog = document.querySelector("#admin-comments-dialog");
 const toast = document.querySelector("#toast");
 const localMessageList = document.querySelector("#local-message-list");
 const COMMENT_PROFILE_KEY = "lorne-orbit-comment-profile";
@@ -91,6 +92,7 @@ const POST_STATE_KEY = "lorne-orbit-post-state";
 const POST_IMAGES_KEY = "lorne-orbit-post-images";
 const LEGACY_MIGRATION_KEY = "lorne-orbit-server-migration-complete";
 const ARTICLE_CACHE_KEY = "lorne-orbit-public-post-cache-v1";
+const ADMIN_READ_COMMENTS_KEY = "lorne-orbit-admin-read-comments-v1";
 
 let activeCategory = "全部";
 let currentPage = 1;
@@ -104,6 +106,8 @@ let messageSubmitInFlight = false;
 let messageDraftRequest = null;
 let articleLoadError = null;
 let articleReloadTimer = null;
+let adminComments = [];
+let commentNotificationTimer = null;
 const commentsByArticle = new Map();
 const PAGE_SIZE = 9;
 
@@ -115,6 +119,48 @@ function showToast(message, duration = 2600) {
 
 function isAdmin() {
   return adminAuthenticated;
+}
+
+function getReadAdminCommentIds() {
+  const ids = readJSONStorage(ADMIN_READ_COMMENTS_KEY, []);
+  return new Set(Array.isArray(ids) ? ids.map(String) : []);
+}
+
+function markAdminCommentsRead() {
+  const ids = adminComments.map((comment) => String(comment.id)).slice(0, 500);
+  try {
+    localStorage.setItem(ADMIN_READ_COMMENTS_KEY, JSON.stringify(ids));
+  } catch {
+    // The notification list still works for this page load when storage is unavailable.
+  }
+}
+
+function renderAdminCommentNotifications() {
+  const button = document.querySelector("#admin-comments-button");
+  const dot = document.querySelector("#admin-comments-dot");
+  const list = document.querySelector("#admin-comments-list");
+  const readIds = getReadAdminCommentIds();
+  const unreadIds = new Set(adminComments.filter((comment) => !readIds.has(String(comment.id))).map((comment) => String(comment.id)));
+  dot.hidden = unreadIds.size === 0;
+  button.setAttribute("aria-label", unreadIds.size ? `查看评论通知，${unreadIds.size} 条未读` : "查看评论通知");
+  list.innerHTML = adminComments.length ? adminComments.map((comment) => `
+    <button class="admin-comment-item${unreadIds.has(String(comment.id)) ? " is-unread" : ""}" type="button" data-admin-comment-article="${comment.articleId}" data-admin-comment-id="${escapeHTML(String(comment.id))}">
+      <header><strong>${escapeHTML(comment.name)}</strong><time>${escapeHTML(comment.date)}</time></header>
+      <p class="admin-comment-email">${escapeHTML(comment.email || "未提供邮箱")}</p>
+      <p class="admin-comment-text">${comment.parentId ? "[回复] " : ""}${escapeHTML(comment.text)}</p>
+      <p class="admin-comment-article">文章：${escapeHTML(comment.articleTitle)}</p>
+    </button>`).join("") : '<p class="admin-comments-empty">暂时没有评论或回复。</p>';
+}
+
+async function refreshAdminCommentNotifications({ silent = true } = {}) {
+  if (!isAdmin()) return;
+  try {
+    const payload = await blogApi.getAdminComments({ timeout: 8000 });
+    adminComments = Array.isArray(payload.comments) ? payload.comments : [];
+    renderAdminCommentNotifications();
+  } catch (error) {
+    if (!silent) showToast(error.message || "评论通知加载失败。", 3200);
+  }
 }
 
 function readJSONStorage(key, fallback) {
@@ -457,6 +503,17 @@ function renderAdminTools() {
   const hasLegacyPosts = getCustomPosts().length > 0;
   migrationButton.hidden = !loggedIn || migrationDone || (!hasLegacyPosts && allArticles.length > 0);
   document.body.classList.toggle("admin-authenticated", loggedIn);
+  if (loggedIn && !commentNotificationTimer) {
+    commentNotificationTimer = setInterval(() => void refreshAdminCommentNotifications(), 60000);
+  } else if (!loggedIn && commentNotificationTimer) {
+    clearInterval(commentNotificationTimer);
+    commentNotificationTimer = null;
+  }
+  if (!loggedIn) {
+    adminComments = [];
+    document.querySelector("#admin-comments-dot").hidden = true;
+    if (adminCommentsDialog.open) adminCommentsDialog.close();
+  }
 }
 
 function updateMarkdownPreview() {
@@ -975,7 +1032,7 @@ singlePost.addEventListener("submit", async (event) => {
   setTimeout(() => document.querySelector(`#comment-${CSS.escape(comment.id)}`)?.scrollIntoView({ behavior: "smooth", block: "center" }), 380);
 });
 
-[searchDialog, loginDialog, deleteDialog].forEach((dialog) => {
+[searchDialog, loginDialog, deleteDialog, adminCommentsDialog].forEach((dialog) => {
   dialog.addEventListener("click", (event) => {
     const rect = dialog.getBoundingClientRect();
     const outside = event.clientX < rect.left || event.clientX > rect.right || event.clientY < rect.top || event.clientY > rect.bottom;
@@ -990,6 +1047,22 @@ document.querySelector("#admin-login-button").addEventListener("click", () => {
 });
 
 document.querySelector(".login-close").addEventListener("click", () => loginDialog.close());
+
+document.querySelector("#admin-comments-button").addEventListener("click", async () => {
+  await refreshAdminCommentNotifications({ silent: false });
+  if (!adminCommentsDialog.open) adminCommentsDialog.showModal();
+  markAdminCommentsRead();
+  document.querySelector("#admin-comments-dot").hidden = true;
+});
+
+document.querySelector(".admin-comments-close").addEventListener("click", () => adminCommentsDialog.close());
+
+document.querySelector("#admin-comments-list").addEventListener("click", (event) => {
+  const item = event.target.closest("[data-admin-comment-article]");
+  if (!item) return;
+  adminCommentsDialog.close();
+  openArticle(item.dataset.adminCommentArticle);
+});
 
 document.querySelector("#login-form").addEventListener("submit", async (event) => {
   event.preventDefault();
@@ -1006,6 +1079,7 @@ document.querySelector("#login-form").addEventListener("submit", async (event) =
     loginDialog.close();
     await refreshArticles();
     renderAdminTools();
+    await refreshAdminCommentNotifications({ silent: false });
     renderArchive();
     renderLocalMessages();
     await applyView();
@@ -1385,6 +1459,7 @@ async function initializeApp() {
       renderArchive();
       await applyView();
     }
+    await refreshAdminCommentNotifications();
   }
   renderAdminTools();
 }

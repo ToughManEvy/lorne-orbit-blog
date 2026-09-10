@@ -87,6 +87,14 @@ function commentFromRow(row) {
   };
 }
 
+function adminCommentFromRow(row) {
+  return {
+    ...commentFromRow(row),
+    email: row.email,
+    articleTitle: row.article_title
+  };
+}
+
 function messageFromRow(row) {
   return {
     id: row.id,
@@ -447,6 +455,19 @@ async function handleApi(request, env, ctx) {
   if (method === "POST" && path === "/api/auth/logout") {
     requireWebClient(request);
     return new Response(null, { status: 204, headers: { "Set-Cookie": `${COOKIE_NAME}=; HttpOnly; Secure; SameSite=Lax; Max-Age=0; Path=/` } });
+  }
+
+  if (method === "GET" && path === "/api/admin/comments") {
+    await requireAdmin(request, env);
+    const result = await env.DB.prepare(`
+      SELECT comments.*, posts.title AS article_title
+      FROM comments
+      INNER JOIN posts ON posts.id = comments.article_id
+      WHERE comments.is_admin = 0
+      ORDER BY comments.created_at DESC
+      LIMIT 200
+    `).all();
+    return json({ comments: (result.results || []).map(adminCommentFromRow) });
   }
 
   if (method === "GET" && path === "/api/posts") {

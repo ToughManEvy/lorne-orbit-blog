@@ -76,6 +76,7 @@
     updatePost: (id, changes) => request(`/posts/${id}`, { method: "PATCH", body: JSON.stringify(changes) }),
     deletePost: (id) => request(`/posts/${id}`, { method: "DELETE" }),
     getComments: (articleId) => request(`/posts/${articleId}/comments`),
+    getAdminComments: (options) => request("/admin/comments", options),
     createComment: (articleId, comment) => request(`/posts/${articleId}/comments`, { method: "POST", body: JSON.stringify(comment) }),
     getMessages: (options) => request("/messages", options),
     createMessage: (message, requestId) => request("/messages", {

@@ -6,7 +6,7 @@
     <meta name="theme-color" content="#f2e4cd" />
     <meta name="description" content="Lorne's orbit——浩瀚江海，立身守礼。" />
     <title>Lorne's orbit · 个人博客</title>
-    <link rel="stylesheet" href="styles.css?v=20260812-font-rollback" />
+    <link rel="stylesheet" href="styles.css?v=20260910-comment-inbox" />
   </head>
   <body data-view="home">
     <div class="reading-progress" aria-hidden="true"></div>
@@ -25,6 +25,7 @@
         <div class="admin-tools" id="admin-tools">
           <button class="admin-login-button" id="admin-login-button" type="button">管理员登录</button>
           <div class="admin-session-tools" id="admin-session-tools" hidden>
+            <button class="admin-comments-button" id="admin-comments-button" type="button" aria-label="查看评论通知">评论<span class="admin-comments-dot" id="admin-comments-dot" hidden></span></button>
             <a href="#write">写文章</a>
             <a href="#manage">文章管理</a>
             <button id="legacy-migrate-button" type="button" hidden>迁移旧文章</button>
@@ -225,6 +226,17 @@
       </form>
     </dialog>
 
+    <dialog class="admin-comments-dialog" id="admin-comments-dialog" aria-labelledby="admin-comments-title">
+      <header class="admin-comments-heading">
+        <div>
+          <p>COMMENT INBOX</p>
+          <h2 id="admin-comments-title">评论通知</h2>
+        </div>
+        <button class="admin-comments-close" type="button" aria-label="关闭评论通知">×</button>
+      </header>
+      <div class="admin-comments-list" id="admin-comments-list"></div>
+    </dialog>
+
     <dialog class="delete-dialog" id="delete-dialog" aria-labelledby="delete-dialog-title">
       <div class="delete-dialog-content">
         <p class="delete-dialog-kicker">DELETE POST</p>
@@ -245,7 +257,7 @@
     <script async src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <script async src="https://cdn.jsdelivr.net/npm/dompurify/dist/purify.min.js"></script>
     <script defer src="config.js"></script>
-    <script defer src="api.js?v=20260812-reading-speed"></script>
-    <script defer src="script.js?v=20260812-reading-speed"></script>
+    <script defer src="api.js?v=20260910-comment-inbox"></script>
+    <script defer src="script.js?v=20260910-comment-inbox"></script>
   </body>
 </html>
