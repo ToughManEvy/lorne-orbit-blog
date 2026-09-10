@@ -769,7 +769,7 @@ async function renderSinglePost(id) {
       </nav>
       <section class="comments-area" data-comment-article="${article.id}" aria-labelledby="comment-count">
         <button class="comment-compose-toggle" type="button" aria-expanded="false" aria-controls="comment-form-panel">
-          <span>发表回复</span><span class="toggle-mark" aria-hidden="true">＋</span>
+          <span>发表评论</span><span class="toggle-mark" aria-hidden="true">＋</span>
         </button>
         <div class="comment-form-panel" id="comment-form-panel">
           <div class="comment-form-clip">
@@ -892,7 +892,7 @@ function setCommentFormOpen(open) {
   panel.classList.toggle("open", open);
   toggle.classList.toggle("open", open);
   toggle.setAttribute("aria-expanded", String(open));
-  toggle.querySelector("span:first-child").textContent = open ? "收起回复" : "发表回复";
+  toggle.querySelector("span:first-child").textContent = open ? "收起评论" : "发表评论";
   if (open) setTimeout(() => document.querySelector('#comment-form textarea[name="comment"]')?.focus(), 360);
 }
 
