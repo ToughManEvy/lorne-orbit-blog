@@ -108,6 +108,7 @@ let articleLoadError = null;
 let articleReloadTimer = null;
 let adminComments = [];
 let commentNotificationTimer = null;
+let pendingAdminCommentTarget = null;
 const commentsByArticle = new Map();
 const PAGE_SIZE = 9;
 
@@ -871,6 +872,19 @@ async function renderSinglePost(id) {
     showToast(error.message || "评论加载失败");
   }
   renderComments(article.id);
+  if (pendingAdminCommentTarget?.articleId === article.id) {
+    const target = document.getElementById(`comment-${pendingAdminCommentTarget.commentId}`);
+    pendingAdminCommentTarget = null;
+    if (target) {
+      requestAnimationFrame(() => requestAnimationFrame(() => {
+        target.classList.add("is-notification-target");
+        target.scrollIntoView({ behavior: "smooth", block: "center" });
+        setTimeout(() => target.classList.remove("is-notification-target"), 2600);
+      }));
+    } else {
+      showToast("该评论暂时无法定位。", 2600);
+    }
+  }
 }
 
 function renderSearch(query = "") {
@@ -1060,8 +1074,11 @@ document.querySelector(".admin-comments-close").addEventListener("click", () => 
 document.querySelector("#admin-comments-list").addEventListener("click", (event) => {
   const item = event.target.closest("[data-admin-comment-article]");
   if (!item) return;
+  const articleId = Number(item.dataset.adminCommentArticle);
+  pendingAdminCommentTarget = { articleId, commentId: item.dataset.adminCommentId };
   adminCommentsDialog.close();
-  openArticle(item.dataset.adminCommentArticle);
+  if (location.hash === `#post-${articleId}`) void renderSinglePost(articleId);
+  else openArticle(articleId);
 });
 
 document.querySelector("#login-form").addEventListener("submit", async (event) => {
