@@ -26,6 +26,6 @@
   ],
   "vars": {
     "ADMIN_USERNAME": "Lorne",
-    "FRONTEND_ORIGINS": "https://sensational-banoffee-1649e3.netlify.app"
+    "FRONTEND_ORIGINS": "https://lorne-orbit.lorne-orbit.workers.dev"
   }
 }
