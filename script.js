@@ -884,7 +884,7 @@ async function renderSinglePost(id) {
           pulseStarted = true;
           clearTimeout(pulseFallback);
           target.classList.add("is-notification-target");
-          setTimeout(() => target.classList.remove("is-notification-target"), 3000);
+          setTimeout(() => target.classList.remove("is-notification-target"), 3800);
         };
         window.addEventListener("scrollend", startPulse, { once: true });
         target.scrollIntoView({ behavior: "smooth", block: "center" });
