@@ -232,6 +232,7 @@ a { color: inherit; text-decoration: none; }
 .post-meta { display: flex; gap: 20px; margin: 16px 0 0; color: #817c75; font-size: 12px; }
 .post-body { max-width: 840px; margin-top: 48px; color: #433e39; font: 400 15px/2.05 var(--serif); }
 .post-body p { margin: 0 0 24px; }
+.post-body p, .post-body li, .post-body blockquote { white-space: break-spaces; }
 .post-body .post-lead { margin-bottom: 28px; color: #302c29; font-size: 16px; font-weight: 500; }
 .post-body h1, .post-body h2, .post-body h3 { margin: 1.7em 0 .7em; color: #302b27; line-height: 1.45; }
 .post-body h1 { font-size: 28px; }

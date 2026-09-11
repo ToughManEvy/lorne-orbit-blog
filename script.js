@@ -1198,6 +1198,37 @@ document.querySelector(".editor-toolbar").addEventListener("click", (event) => {
 });
 
 document.querySelector("#markdown-editor").addEventListener("input", updateMarkdownPreview);
+document.querySelector("#markdown-editor").addEventListener("keydown", (event) => {
+  if (event.key !== "Tab") return;
+  event.preventDefault();
+  const editor = event.currentTarget;
+  const indent = "  ";
+  const start = editor.selectionStart;
+  const end = editor.selectionEnd;
+
+  if (start === end) {
+    if (event.shiftKey) {
+      const lineStart = editor.value.lastIndexOf("\n", start - 1) + 1;
+      const removable = editor.value.slice(lineStart, start).match(/^ {1,2}/)?.[0] || "";
+      if (removable) {
+        editor.setRangeText("", lineStart, lineStart + removable.length, "end");
+        editor.setSelectionRange(start - removable.length, start - removable.length);
+      }
+    } else {
+      editor.setRangeText(indent, start, end, "end");
+    }
+    updateMarkdownPreview();
+    return;
+  }
+
+  const blockStart = editor.value.lastIndexOf("\n", start - 1) + 1;
+  const blockEnd = editor.value.indexOf("\n", end);
+  const selectionEnd = blockEnd === -1 ? editor.value.length : blockEnd;
+  const lines = editor.value.slice(blockStart, selectionEnd).split("\n");
+  const replacement = lines.map((line) => event.shiftKey ? line.replace(/^ {1,2}/, "") : `${indent}${line}`).join("\n");
+  editor.setRangeText(replacement, blockStart, selectionEnd, "select");
+  updateMarkdownPreview();
+});
 document.querySelector("#markdown-editor").addEventListener("paste", async (event) => {
   let images = clipboardImageFiles(event.clipboardData);
   const clipboardTypes = [...(event.clipboardData?.types || [])];
