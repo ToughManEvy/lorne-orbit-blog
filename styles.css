@@ -379,6 +379,7 @@ body[data-view="manage"] .admin-manage-view { display: block; }
 #markdown-editor { width: 100%; min-height: 610px; padding: 24px; resize: vertical; border: 0; outline: 0; color: #3f3934; background: transparent; caret-color: var(--ink); font: 14px/1.9 Consolas, "Microsoft YaHei", monospace; }
 #markdown-editor:focus { background: transparent; }
 .markdown-preview { min-height: 610px; max-width: none; margin: 0; padding: 24px 30px; overflow-wrap: anywhere; }
+.markdown-preview p, .markdown-preview li, .markdown-preview blockquote { word-spacing: .32em; }
 .preview-placeholder { color: #998b7f; }
 .editor-submit-row { display: flex; align-items: center; justify-content: space-between; padding-top: 25px; }
 .editor-submit-row p { margin: 0; color: #80756b; font-size: 11px; }
