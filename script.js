@@ -110,7 +110,7 @@ let adminComments = [];
 let commentNotificationTimer = null;
 let pendingAdminCommentTarget = null;
 const commentsByArticle = new Map();
-const PAGE_SIZE = 9;
+const PAGE_SIZE = 10;
 
 function showToast(message, duration = 2600) {
   toast.textContent = message;
