@@ -397,7 +397,7 @@ function renderArticles(category = "全部") {
     <article class="featured-article${leadHidden ? " is-visitor-hidden" : ""}">
       <div class="featured-body">
         ${meta(lead)}
-        <h3><button class="article-title-link" type="button" data-read="${lead.id}">${lead.title}</button></h3>
+        <h3><button class="article-title-link" type="button" data-read="${lead.id}">${lead.title}</button>${lead.pinned ? '<span class="pinned-badge">置顶</span>' : ""}</h3>
         <p class="article-excerpt">${excerptFromBody(lead, 110)}</p>
         <button class="read-more" type="button" data-read="${lead.id}">阅读全文</button>
       </div>
@@ -534,11 +534,12 @@ function renderManagePosts() {
     <article class="manage-post-row${article.hidden ? " is-hidden" : ""}">
       <div class="manage-post-main">
         <p><span>${escapeHTML(article.category)}</span><time>${escapeHTML(article.date)}</time>${article.hidden ? '<em>已隐藏</em>' : ""}</p>
-        <h3><button type="button" data-manage-open="${article.id}">${escapeHTML(article.title)}</button></h3>
+        <h3><button type="button" data-manage-open="${article.id}">${escapeHTML(article.title)}</button>${article.pinned ? '<span class="pinned-badge">置顶</span>' : ""}</h3>
         <small>${article.isCustom ? "本地发布文章" : "内置文章"}</small>
       </div>
       <div class="manage-actions">
         <button type="button" data-edit-post="${article.id}">编辑</button>
+        <button type="button" data-toggle-pinned="${article.id}">${article.pinned ? "取消置顶" : "置顶"}</button>
         <button type="button" data-toggle-hidden="${article.id}">${article.hidden ? "对游客显示" : "对游客隐藏"}</button>
         <button class="danger" type="button" data-delete-post="${article.id}">删除</button>
       </div>
@@ -1321,6 +1322,24 @@ document.querySelector("#manage-post-list").addEventListener("click", async (eve
     return;
   }
   const hiddenButton = event.target.closest("[data-toggle-hidden]");
+  const pinnedButton = event.target.closest("[data-toggle-pinned]");
+  if (pinnedButton) {
+    const id = Number(pinnedButton.dataset.togglePinned);
+    const article = getAllArticleRecords().find((item) => item.id === id);
+    if (!article || pinnedButton.disabled) return;
+    pinnedButton.disabled = true;
+    try {
+      await updatePostState(id, { pinned: !article.pinned });
+      currentPage = 1;
+      await refreshAllArticleViews();
+      showToast(article.pinned ? "已取消置顶。" : "已置顶，原置顶文章已自动取消。", 2200);
+    } catch (error) {
+      showToast(error.message || "置顶状态更新失败。", 2800);
+    } finally {
+      pinnedButton.disabled = false;
+    }
+    return;
+  }
   if (hiddenButton) {
     const id = Number(hiddenButton.dataset.toggleHidden);
     const article = getAllArticleRecords().find((item) => item.id === id);

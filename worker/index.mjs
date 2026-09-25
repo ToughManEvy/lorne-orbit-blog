@@ -68,6 +68,7 @@ function postFromRow(row) {
     excerpt: row.excerpt,
     body: row.body,
     featured: bool(row.featured),
+    pinned: bool(row.pinned),
     hidden: bool(row.hidden),
     isCustom: true,
     isMarkdown: bool(row.is_markdown)
@@ -478,7 +479,7 @@ async function handleApi(request, env, ctx) {
 
   if (method === "GET" && path === "/api/posts") {
     const includeHidden = url.searchParams.get("includeHidden") === "true" && Boolean(await readAdmin(request, env));
-    const result = await env.DB.prepare("SELECT * FROM posts ORDER BY sort_order DESC, id DESC").all();
+    const result = await env.DB.prepare("SELECT * FROM posts ORDER BY pinned DESC, sort_order DESC, id DESC").all();
     return json({ posts: (result.results || []).map(includeHidden ? postFromRow : publicPostFromRow) });
   }
 
@@ -511,6 +512,22 @@ async function handleApi(request, env, ctx) {
     const current = await env.DB.prepare("SELECT * FROM posts WHERE id = ?1").bind(id).first();
     if (!current) throw new HttpError(404, "文章不存在");
     const has = (key) => Object.prototype.hasOwnProperty.call(body || {}, key);
+    if (has("pinned")) {
+      if (typeof body.pinned !== "boolean" || Object.keys(body).length !== 1) {
+        throw new HttpError(400, "请单独更新文章置顶状态");
+      }
+      // D1 batches are transactional: replacing the pin never leaves two pinned posts.
+      if (body.pinned) {
+        await env.DB.batch([
+          env.DB.prepare("UPDATE posts SET pinned = 0 WHERE pinned = 1"),
+          env.DB.prepare("UPDATE posts SET pinned = 1 WHERE id = ?1").bind(id)
+        ]);
+      } else {
+        await env.DB.prepare("UPDATE posts SET pinned = 0 WHERE id = ?1").bind(id).run();
+      }
+      const row = await env.DB.prepare("SELECT * FROM posts WHERE id = ?1").bind(id).first();
+      return json({ post: postFromRow(row) });
+    }
     const editsContent = ["title", "category", "body", "lead", "excerpt"].some(has);
     if (!editsContent && !has("hidden")) throw new HttpError(400, "没有需要更新的文章内容");
     if (has("hidden") && typeof body.hidden !== "boolean") throw new HttpError(400, "文章状态不正确");
