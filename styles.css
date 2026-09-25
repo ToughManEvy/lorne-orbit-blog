@@ -257,6 +257,13 @@ a { color: inherit; text-decoration: none; }
 .image-drop-anchor.is-drop-target::after { content: ''; position: absolute; top: -2px; left: 0; right: 0; border-top: 3px solid var(--terracotta); z-index: 4; }
 .image-drag-ghost { z-index: 10000; pointer-events: none; opacity: .65; object-fit: contain; box-shadow: 0 8px 24px #0003; }
 .image-alignment-guide { position: fixed; z-index: 10001; width: 0; border-left: 1px dashed var(--terracotta); pointer-events: none; }
+.blog-image-row { display: flex; gap: 12px; align-items: flex-start; margin: 32px 0; white-space: normal; }
+.blog-image-cell { display: block; flex: 1 1 0; min-width: 0; position: relative; }
+.post-body .blog-image-cell > img, .blog-image-cell .editable-image { margin-top: 0; margin-bottom: 0; }
+.is-row-drop-left, .is-row-drop-right { outline: 2px dashed var(--terracotta); outline-offset: 5px; }
+.is-row-drop-left::after, .is-row-drop-right::after { position: absolute; top: 8px; padding: 4px 8px; background: var(--terracotta); color: white; font: 12px/1.5 sans-serif; pointer-events: none; z-index: 3; }
+.is-row-drop-left::after { content: '松手放在左侧'; left: 0; }
+.is-row-drop-right::after { content: '松手放在右侧'; right: 0; }
 .post-body a { color: var(--terracotta); text-decoration: underline; text-underline-offset: 3px; }
 .post-body mark { padding: .08em .2em; color: inherit; background: linear-gradient(transparent 12%, rgba(244, 204, 92, .55) 12%, rgba(244, 204, 92, .55) 88%, transparent 88%); }
 .admin-hidden-label { color: #9d593f; }
