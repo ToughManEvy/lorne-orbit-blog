@@ -317,11 +317,12 @@ function configureMarkdownExtensions() {
   markdownExtensionsConfigured = true;
 }
 
-function renderMarkdown(source) {
+function renderMarkdown(source, editing = false) {
   const resolvedSource = resolveLocalImages(source);
   if (window.marked?.parse && window.DOMPurify?.sanitize) {
     configureMarkdownExtensions();
-    return window.DOMPurify.sanitize(window.marked.parse(resolvedSource, { gfm: true, breaks: true }), { ADD_ATTR: ["target"] });
+    const prepared = window.BlogImageLayout ? window.BlogImageLayout.prepare(resolvedSource, editing) : resolvedSource;
+    return window.DOMPurify.sanitize(window.marked.parse(prepared, { gfm: true, breaks: true }), { ADD_ATTR: ["target"] });
   }
   return fallbackMarkdown(resolvedSource);
 }
@@ -523,7 +524,8 @@ function updateMarkdownPreview() {
   const editor = document.querySelector("#markdown-editor");
   const preview = document.querySelector("#markdown-preview");
   if (!editor || !preview) return;
-  preview.innerHTML = editor.value.trim() ? renderMarkdown(editor.value) : '<p class="preview-placeholder">预览将在这里出现。</p>';
+  preview.innerHTML = editor.value.trim() ? renderMarkdown(editor.value, true) : '<p class="preview-placeholder">预览将在这里出现。</p>';
+  window.BlogImageLayout?.enhance(preview, editor, updateMarkdownPreview);
 }
 
 function renderManagePosts() {

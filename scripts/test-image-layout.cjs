@@ -1,0 +1,78 @@
+const { chromium } = require('playwright');
+const fs = require('node:fs');
+const assert = require('node:assert/strict');
+const path = require('node:path');
+
+(async () => {
+  const browser = await chromium.launch({ channel: 'msedge', headless: true });
+  try {
+    const page = await browser.newPage({ viewport: { width: 1200, height: 1000 } });
+    const errors = [];
+    page.on('pageerror', error => errors.push(error.message));
+    await page.setContent('<textarea id="markdown-editor"></textarea><article id="markdown-preview" class="post-body markdown-preview" style="width:700px"></article>');
+    await page.addStyleTag({ path: path.resolve('styles.css') });
+    await page.addStyleTag({ content: '#markdown-editor { min-height: 80px; height: 80px; }' });
+    await page.addScriptTag({ url: 'https://cdn.jsdelivr.net/npm/marked/marked.min.js' });
+    await page.addScriptTag({ url: 'https://cdn.jsdelivr.net/npm/dompurify/dist/purify.min.js' });
+    await page.addScriptTag({ path: path.resolve('public/image-layout.js') });
+    const app = fs.readFileSync('script.js', 'utf8');
+    const rendering = app.slice(app.indexOf('let markdownExtensionsConfigured'), app.indexOf('function plainTextFromMarkdown'));
+    const update = app.slice(app.indexOf('function updateMarkdownPreview'), app.indexOf('function renderManagePosts'));
+    await page.addScriptTag({ content: `function resolveLocalImages(s) { return s; }\n${rendering}\n${update}\ndocument.querySelector('#markdown-editor').addEventListener('input', updateMarkdownPreview);` });
+    const image = 'data:image/svg+xml;base64,' + Buffer.from('<svg xmlns="http://www.w3.org/2000/svg" width="600" height="300"><rect width="600" height="300" fill="steelblue"/></svg>').toString('base64');
+    const source = `# 标题\n\n第一段\n\n![图片](${image})\n\n第二段\n\n第三段`;
+    await page.locator('#markdown-editor').fill(source);
+    await page.waitForFunction(() => document.querySelector('#markdown-preview img')?.naturalWidth > 0);
+    const img = page.locator('#markdown-preview img');
+    const before = await img.boundingBox();
+    const handle = await page.locator('.image-resize-handle').boundingBox();
+    await page.mouse.move(handle.x + 9, handle.y + 9);
+    await page.mouse.down();
+    await page.mouse.move(handle.x - 160, handle.y - 70, { steps: 8 });
+    await page.mouse.up();
+    const after = await img.boundingBox();
+    assert.ok(after.width < before.width - 100, 'Drag resizes the image');
+    assert.ok(Math.abs(after.width / after.height - 2) < .05, 'Aspect ratio is preserved');
+    assert.match(await page.locator('#markdown-editor').inputValue(), /<!--blog-image:/);
+    await page.getByRole('button', { name: '居右', exact: true }).click();
+    const aligned = await img.boundingBox();
+    assert.ok(aligned.x > before.x + 100, 'Right alignment moves the image');
+    await page.getByRole('button', { name: '居左', exact: true }).click();
+    const drag = await img.boundingBox();
+    await page.mouse.move(drag.x + 40, drag.y + 40);
+    await page.mouse.down();
+    await page.mouse.move(drag.x + 100, drag.y + 40, { steps: 6 });
+    await page.mouse.up();
+    assert.ok((await img.boundingBox()).x > drag.x + 40, 'Horizontal dragging persists');
+    const saved = await page.locator('#markdown-editor').inputValue();
+    await page.screenshot({ path: '.wrangler/image-layout-preview.png', fullPage: true });
+    const published = await page.evaluate(s => {
+      const div = document.createElement('div'); div.innerHTML = renderMarkdown(s);
+      return { style: div.querySelector('img').getAttribute('style'), controls: div.querySelectorAll('button,.image-drop-anchor').length };
+    }, saved);
+    assert.match(published.style, /width:/);
+    assert.equal(published.controls, 0);
+    const anchors = page.locator('.image-drop-anchor');
+    const last = await anchors.last().boundingBox();
+    const moving = await img.boundingBox();
+    await page.mouse.move(moving.x + 30, moving.y + 30);
+    await page.mouse.down();
+    await page.mouse.move(moving.x + 30, last.y + 8, { steps: 10 });
+    await page.mouse.up();
+    const reordered = await page.locator('#markdown-editor').inputValue();
+    assert.ok(reordered.indexOf('![图片]') > reordered.indexOf('第三段'), 'Image moves after the final paragraph');
+    assert.equal((reordered.match(/!\[图片\]/g) || []).length, 1);
+    await page.locator('#markdown-editor').fill(reordered);
+    assert.match(await img.getAttribute('style'), /width:/);
+    const codeTest = await page.evaluate(src => {
+      const sample = '```md\n' + src + '\n```\n\n' + src;
+      return BlogImageLayout.inspect(sample).images.map(item => item.start);
+    }, `![图片](${image})`);
+    assert.equal(codeTest.length, 1, 'Code samples are not editable images');
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.locator('#markdown-preview').evaluate(el => { el.style.width = '100%'; });
+    assert.ok((await img.boundingBox()).width <= 390);
+    assert.deepEqual(errors, []);
+    console.log('PASS: resize, aspect ratio, alignment, horizontal drag, paragraph reorder, persistence, code exclusion, mobile width');
+  } finally { await browser.close(); }
+})().catch(error => { console.error(error); process.exitCode = 1; });

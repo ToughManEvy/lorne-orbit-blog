@@ -6,7 +6,7 @@
     <meta name="theme-color" content="#f2e4cd" />
     <meta name="description" content="Lorne's orbit——浩瀚江海，立身守礼。" />
     <title>Lorne's orbit · 个人博客</title>
-    <link rel="stylesheet" href="styles.css?v=20260925-pinned-post" />
+    <link rel="stylesheet" href="styles.css?v=20260925-image-layout" />
   </head>
   <body data-view="home">
     <div class="reading-progress" aria-hidden="true"></div>
@@ -172,7 +172,7 @@
           <input type="file" id="editor-image-input" accept="image/*" multiple hidden />
           <div class="editor-workspace">
             <label class="markdown-input-wrap"><span>Markdown 正文</span><textarea id="markdown-editor" name="body" placeholder="# 从这里开始写作……" required></textarea></label>
-            <section class="markdown-preview-wrap" aria-label="文章预览"><span>实时预览</span><article class="markdown-preview post-body" id="markdown-preview"><p class="preview-placeholder">预览将在这里出现。</p></article></section>
+            <section class="markdown-preview-wrap" aria-label="文章预览"><span>实时预览 · 拖动图片移动，拖右下角缩放</span><article class="markdown-preview post-body" id="markdown-preview"><p class="preview-placeholder">预览将在这里出现。</p></article></section>
           </div>
           <div class="editor-submit-row">
             <p id="editor-submit-hint">文章保存到数据库，图片保存到云端对象存储。</p>
@@ -258,6 +258,7 @@
     <script async src="https://cdn.jsdelivr.net/npm/dompurify/dist/purify.min.js"></script>
     <script defer src="config.js"></script>
     <script defer src="api.js?v=20260910-comment-inbox"></script>
-    <script defer src="script.js?v=20260925-pinned-post"></script>
+    <script defer src="image-layout.js?v=20260925-image-layout"></script>
+    <script defer src="script.js?v=20260925-image-layout"></script>
   </body>
 </html>
