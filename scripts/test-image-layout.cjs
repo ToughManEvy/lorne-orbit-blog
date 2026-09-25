@@ -44,6 +44,21 @@ const path = require('node:path');
     await page.mouse.move(drag.x + 100, drag.y + 40, { steps: 6 });
     await page.mouse.up();
     assert.ok((await img.boundingBox()).x > drag.x + 40, 'Horizontal dragging persists');
+    const frame = await page.locator('.editable-image').boundingBox();
+    for (const alignment of [0.5, 1, 0]) {
+      const box = await img.boundingBox();
+      const expectedX = frame.x + (frame.width - box.width) * alignment;
+      const nearX = expectedX + (alignment === 1 ? -7 : 7);
+      await page.mouse.move(box.x + 30, box.y + 30);
+      await page.mouse.down();
+      await page.mouse.move(nearX + 30, box.y + 30, { steps: 8 });
+      assert.equal(await page.locator('.image-alignment-guide:visible').count(), 1);
+      const ghost = await page.locator('.image-drag-ghost').boundingBox();
+      assert.ok(Math.abs(ghost.x - expectedX) < 1, 'Ghost snaps to the guide');
+      await page.mouse.up();
+      assert.ok(Math.abs((await img.boundingBox()).x - expectedX) < 1, 'Saved image retains snap alignment');
+      assert.equal(await page.locator('.image-alignment-guide').count(), 0);
+    }
     const saved = await page.locator('#markdown-editor').inputValue();
     await page.screenshot({ path: '.wrangler/image-layout-preview.png', fullPage: true });
     const published = await page.evaluate(s => {
@@ -69,10 +84,20 @@ const path = require('node:path');
       return BlogImageLayout.inspect(sample).images.map(item => item.start);
     }, `![图片](${image})`);
     assert.equal(codeTest.length, 1, 'Code samples are not editable images');
+    await page.locator('#markdown-editor').fill(`![参考](${image})<!--blog-image:40:18-->\n\n![移动](${image})<!--blog-image:30:0-->`);
+    const reference = await page.locator('#markdown-preview img').first().boundingBox();
+    const second = page.locator('#markdown-preview img').nth(1);
+    const secondBox = await second.boundingBox();
+    await page.mouse.move(secondBox.x + 25, secondBox.y + 25);
+    await page.mouse.down();
+    await page.mouse.move(reference.x + 25 + 6, secondBox.y + 25, { steps: 8 });
+    await page.mouse.up();
+    assert.ok(Math.abs((await second.boundingBox()).x - reference.x) < 1, 'Aligns with another image edge');
+    await page.locator('#markdown-editor').fill(reordered);
     await page.setViewportSize({ width: 390, height: 844 });
     await page.locator('#markdown-preview').evaluate(el => { el.style.width = '100%'; });
     assert.ok((await img.boundingBox()).width <= 390);
     assert.deepEqual(errors, []);
-    console.log('PASS: resize, aspect ratio, alignment, horizontal drag, paragraph reorder, persistence, code exclusion, mobile width');
+    console.log('PASS: resize, drag, left/center/right snap, guide cleanup, other-image alignment, reorder, persistence, mobile width');
   } finally { await browser.close(); }
 })().catch(error => { console.error(error); process.exitCode = 1; });

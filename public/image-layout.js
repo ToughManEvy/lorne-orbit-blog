@@ -142,10 +142,31 @@
         const scrollY = window.scrollY;
         let width = initial.width, left = initial.left, destination = null, changed = false;
         let activeAnchor = null;
+        let snapped = null;
+        const snapTargets = [
+          { left: 0, edge: 0 },
+          { left: (100 - width) / 2, edge: .5 },
+          { left: 100 - width, edge: 1 }
+        ];
+        preview.querySelectorAll('img[data-blog-image]').forEach(other => {
+          if (other === image) return;
+          const bounds = other.getBoundingClientRect();
+          for (const edge of [0, 1]) {
+            const candidate = (bounds.left + bounds.width * edge - area.left) / area.width * 100 - width * edge;
+            if (candidate >= 0 && candidate <= 100 - width) snapTargets.push({ left: candidate, edge });
+          }
+        });
         const target = event.currentTarget;
         target.setPointerCapture(event.pointerId);
         frame.classList.add('is-adjusting');
         const ghost = resizing ? null : image.cloneNode();
+        const guide = resizing ? null : document.createElement('div');
+        if (guide) {
+          guide.className = 'image-alignment-guide';
+          guide.hidden = true;
+          guide.setAttribute('aria-hidden', 'true');
+          document.body.append(guide);
+        }
         if (ghost) {
           ghost.removeAttribute('data-blog-image');
           ghost.className = 'image-drag-ghost';
@@ -165,7 +186,20 @@
             positionHandle();
           } else {
             left = clamp(initial.left + dx / area.width * 100, 0, 100 - width);
-            ghost.style.transform = `translate(${dx}px, ${dy}px)`;
+            const distance = target => Math.abs(target.left - left) * area.width / 100;
+            if (!snapped || distance(snapped) > 20) {
+              snapped = snapTargets.reduce((best, candidate) => distance(candidate) <= 12 && (!best || distance(candidate) < distance(best)) ? candidate : best, null);
+            }
+            if (snapped) left = snapped.left;
+            ghost.style.transform = `translate(${(left - initial.left) / 100 * area.width}px, ${dy}px)`;
+            guide.hidden = !snapped;
+            if (snapped) {
+              const previewBounds = preview.getBoundingClientRect();
+              const top = Math.max(0, previewBounds.top);
+              guide.style.left = `${area.left + (left + width * snapped.edge) / 100 * area.width}px`;
+              guide.style.top = `${top}px`;
+              guide.style.height = `${Math.max(0, Math.min(window.innerHeight, previewBounds.bottom) - top)}px`;
+            }
             activeAnchor?.classList.remove('is-drop-target');
             destination = null;
             const originalTop = rect.top - (window.scrollY - scrollY);
@@ -185,6 +219,7 @@
           target.removeEventListener('pointercancel', cancel);
           target.removeEventListener('lostpointercapture', cancel);
           ghost?.remove();
+          guide?.remove();
           activeAnchor?.classList.remove('is-drop-target');
           frame.classList.remove('is-adjusting');
           if (target.hasPointerCapture(event.pointerId)) target.releasePointerCapture(event.pointerId);
