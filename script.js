@@ -1329,12 +1329,10 @@ for (const [name, entries] of Object.entries(emojiGroups)) {
 }
 const emojiPicker = document.querySelector('#emoji-picker');
 document.body.append(emojiPicker);
-const emojiToggle = document.querySelector('#emoji-toggle');
 const emojiSearch = document.querySelector('#emoji-search');
 const emojiEditor = document.querySelector('#markdown-editor');
 let emojiCategory = '全部';
 let emojiSelection = [0, 0];
-const emojiFloating = document.querySelector('#emoji-floating');
 function emojiCaretPosition() {
   const rect = emojiEditor.getBoundingClientRect();
   const style = getComputedStyle(emojiEditor);
@@ -1361,14 +1359,10 @@ function openEmojiPicker() {
   const width = emojiPicker.offsetWidth, height = emojiPicker.offsetHeight;
   emojiPicker.style.left = `${Math.max(8, Math.min(point.x, window.innerWidth - width - 8))}px`;
   emojiPicker.style.top = `${Math.max(8, Math.min(point.y + 8, window.innerHeight - height - 8))}px`;
-  emojiToggle.setAttribute('aria-expanded', 'true');
-  emojiFloating.setAttribute('aria-expanded', 'true');
   emojiSearch.focus({ preventScroll: true });
 }
 function closeEmojiPicker(restoreFocus = false) {
   emojiPicker.hidden = true;
-  emojiToggle.setAttribute('aria-expanded', 'false');
-  emojiFloating.setAttribute('aria-expanded', 'false');
   if (restoreFocus) emojiEditor.focus({ preventScroll: true });
 }
 function renderEmojiPicker() {
@@ -1378,11 +1372,6 @@ function renderEmojiPicker() {
   document.querySelector('#emoji-grid').innerHTML = entries.map(([emoji, label]) => `<button type="button" data-emoji="${emoji}" title="${label}" aria-label="${label}">${emoji}</button>`).join('');
   document.querySelector('#emoji-empty').hidden = entries.length > 0;
 }
-emojiToggle.addEventListener('click', () => {
-  if (!emojiPicker.hidden) { closeEmojiPicker(); return; }
-  openEmojiPicker();
-});
-emojiFloating.addEventListener('click', () => emojiPicker.hidden ? openEmojiPicker() : closeEmojiPicker(true));
 emojiEditor.addEventListener('keydown', event => {
   if ((event.ctrlKey || event.metaKey) && event.shiftKey && event.code === 'KeyE') { event.preventDefault(); openEmojiPicker(); }
 });
@@ -1402,9 +1391,8 @@ emojiPicker.addEventListener('keydown', event => {
   if (event.key === 'Escape') { event.preventDefault(); closeEmojiPicker(true); }
   if (event.key === 'Enter' && event.target === emojiSearch) event.preventDefault();
 });
-document.addEventListener('pointerdown', event => { if (!emojiPicker.hidden && !emojiPicker.contains(event.target) && !emojiToggle.contains(event.target) && !emojiFloating.contains(event.target)) closeEmojiPicker(); });
+document.addEventListener('pointerdown', event => { if (!emojiPicker.hidden && !emojiPicker.contains(event.target)) closeEmojiPicker(); });
 window.addEventListener('resize', () => closeEmojiPicker());
-window.addEventListener('scroll', () => closeEmojiPicker(), { passive: true });
 window.addEventListener('hashchange', () => closeEmojiPicker());
 document.querySelector("#insert-image-button").addEventListener("click", () => document.querySelector("#editor-image-input").click());
 document.querySelector("#editor-image-input").addEventListener("change", async (event) => {
