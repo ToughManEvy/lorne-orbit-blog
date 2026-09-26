@@ -7,7 +7,7 @@
     <meta name="description" content="Lorne's orbit——浩瀚江海，立身守礼。" />
     <title>Lorne's orbit · 个人博客</title>
     <link rel="icon" type="image/x-icon" href="/favicon.ico?v=20260926-claude" />
-    <link rel="stylesheet" href="styles.css?v=20260926-emoji" />
+    <link rel="stylesheet" href="styles.css?v=20260926-emoji-floating" />
   </head>
   <body data-view="home">
     <div class="reading-progress" aria-hidden="true"></div>
@@ -172,7 +172,7 @@
             <button type="button" id="emoji-toggle" aria-expanded="false" aria-controls="emoji-picker">😊 表情</button>
             <span>支持 Markdown · 回车直接换行 · 可直接粘贴图片 · ==文字== 高亮</span>
           </div>
-          <section id="emoji-picker" class="emoji-picker" aria-label="选择表情" hidden>
+          <section id="emoji-picker" class="emoji-picker" role="dialog" aria-label="选择表情" hidden>
             <div class="emoji-picker-heading"><label>搜索表情 <input id="emoji-search" type="search" placeholder="例如：开心、爱心、庆祝" autocomplete="off" /></label><button type="button" id="emoji-close" aria-label="关闭表情选择器">×</button></div>
             <div class="emoji-categories" id="emoji-categories" aria-label="表情分类"></div>
             <div class="emoji-grid" id="emoji-grid" aria-label="表情列表"></div>
@@ -275,6 +275,7 @@
     <script defer src="api.js?v=20260926-analytics"></script>
     <script defer src="image-layout.js?v=20260925-image-rows"></script>
     <script defer src="analytics-charts.js?v=20260926-analytics-page"></script>
-    <script defer src="script.js?v=20260926-emoji"></script>
+    <button type="button" id="emoji-floating" class="emoji-floating" aria-controls="emoji-picker" aria-expanded="false" title="在光标处插入表情（Ctrl+Shift+E）">😊 表情 <small>Ctrl+Shift+E</small></button>
+    <script defer src="script.js?v=20260926-emoji-floating"></script>
   </body>
 </html>

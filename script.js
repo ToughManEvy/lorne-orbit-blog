@@ -1317,16 +1317,59 @@ const emojiGroups = {
   '自然与生活': [['☀️','太阳 晴天'],['🌙','月亮 晚安'],['⭐','星星'],['✨','闪亮 星光'],['🌈','彩虹'],['🔥','火 热'],['❄️','雪 冬天'],['🌧️','雨'],['🌊','海 浪'],['🌸','花 樱花'],['🌻','向日葵'],['🌿','植物 叶子'],['🍀','幸运'],['🐱','猫'],['🐶','狗'],['🐼','熊猫'],['🦋','蝴蝶'],['☕','咖啡'],['🍵','茶'],['🍰','蛋糕'],['🍎','苹果'],['🍜','面条'],['🏠','家'],['🚶','散步'],['🏃','跑步']],
   '物品与符号': [['🎉','庆祝 撒花'],['🎊','庆祝 彩带'],['🎂','生日 蛋糕'],['🎁','礼物'],['📚','读书 学习'],['✍️','写作'],['📝','笔记'],['💻','电脑 编程'],['💡','灵感 想法'],['📷','照片 摄影'],['🎵','音乐'],['🎮','游戏'],['🚀','火箭 出发'],['🎯','目标'],['🏆','奖杯 成功'],['✅','完成 正确'],['❌','错误'],['⚠️','警告 注意'],['❓','问题'],['❗','重要'],['📌','置顶 标记'],['🔗','链接'],['🔒','锁 隐私'],['⏳','等待 时间']]
 };
+Object.assign(emojiGroups, {
+  '更多表情': '😃|大笑 😁|露齿笑 😆|眯眼笑 😉|眨眼 😋|好吃 😛|吐舌 😜|调皮 🤪|搞怪 😝|鬼脸 🤑|发财 🤭|偷笑 🤨|怀疑 😐|无语 😑|无奈 😶|沉默 😏|得意 😒|不爽 🙄|白眼 😬|尴尬 🤥|说谎 😌|放松 😔|失落 😪|困倦 🤤|流口水 😷|口罩 🤒|生病 🤕|受伤 🤢|恶心 🤮|呕吐 🤧|喷嚏 🥵|热 🥶|冷 🥴|晕 😵|头晕 🤠|牛仔 🥸|伪装 🧐|研究 🤓|学霸 😕|困惑 😟|担心 🙁|不开心 😮|惊讶 😯|惊讶 😲|吃惊 😳|脸红 🥺|委屈 😦|惊恐 😧|担忧 😨|害怕 😰|紧张 😥|失望 😢|伤心 😖|苦恼 😣|忍耐 😞|失落 😓|汗 😩|疲倦 😫|累 😈|小恶魔 👻|幽灵 🤖|机器人 👽|外星人 💩|便便 😺|开心猫 😸|笑猫 😹|笑哭猫 😻|爱心猫 😼|得意猫 😽|亲亲猫 🙀|惊吓猫 😿|哭猫 😾|生气猫',
+  '动物': '🐭|老鼠 🐹|仓鼠 🐰|兔子 🦊|狐狸 🐻|熊 🐨|考拉 🐯|老虎 🦁|狮子 🐮|牛 🐷|猪 🐸|青蛙 🐵|猴子 🙈|不看 🙉|不听 🙊|不说 🐔|鸡 🐧|企鹅 🐦|鸟 🐤|小鸡 🦆|鸭子 🦅|鹰 🦉|猫头鹰 🦇|蝙蝠 🐺|狼 🐗|野猪 🐴|马 🦄|独角兽 🐝|蜜蜂 🐛|毛毛虫 🐌|蜗牛 🐞|瓢虫 🐜|蚂蚁 🐢|乌龟 🐍|蛇 🦎|蜥蜴 🦖|恐龙 🐙|章鱼 🦑|鱿鱼 🦐|虾 🦀|螃蟹 🐡|河豚 🐠|热带鱼 🐟|鱼 🐬|海豚 🐳|鲸鱼 🦈|鲨鱼 🐘|大象 🦒|长颈鹿 🦔|刺猬',
+  '美食': '🍏|青苹果 🍐|梨 🍊|橘子 🍋|柠檬 🍌|香蕉 🍉|西瓜 🍇|葡萄 🍓|草莓 🫐|蓝莓 🍈|甜瓜 🍒|樱桃 🍑|桃子 🥭|芒果 🍍|菠萝 🥥|椰子 🥝|猕猴桃 🍅|番茄 🥑|牛油果 🥦|西兰花 🥕|胡萝卜 🌽|玉米 🌶️|辣椒 🥔|土豆 🍠|红薯 🥐|羊角包 🍞|面包 🥖|法棍 🧀|奶酪 🥚|鸡蛋 🍳|煎蛋 🥞|松饼 🥓|培根 🍗|鸡腿 🍖|肉 🌭|热狗 🍔|汉堡 🍟|薯条 🍕|披萨 🥪|三明治 🌮|墨西哥卷 🥗|沙拉 🍱|便当 🍣|寿司 🍙|饭团 🍚|米饭 🍛|咖喱 🍲|火锅 🥟|饺子 🍦|冰淇淋 🍧|刨冰 🍩|甜甜圈 🍪|饼干 🍫|巧克力 🍬|糖果 🍭|棒棒糖 🥛|牛奶 🧋|奶茶 🍺|啤酒 🍷|红酒 🥂|干杯 🧃|果汁',
+  '旅行与运动': '🚗|汽车 🚕|出租车 🚌|公交车 🚲|自行车 🛵|摩托车 🚆|火车 🚄|高铁 ✈️|飞机 🚢|船 ⛵|帆船 🏕️|露营 🏖️|海滩 🏝️|海岛 🏔️|雪山 ⛰️|山 🌋|火山 🗻|富士山 🏜️|沙漠 🏙️|城市 🌃|夜景 🌉|桥 🌅|日出 🌄|山间日出 🌇|日落 ⛩️|神社 🗽|自由女神 🗼|东京塔 🎡|摩天轮 🎢|过山车 ⚽|足球 🏀|篮球 🏈|橄榄球 ⚾|棒球 🎾|网球 🏐|排球 🏓|乒乓球 🏸|羽毛球 🥊|拳击 ⛳|高尔夫 ⛸️|滑冰 🎿|滑雪 🏊|游泳 🚴|骑行 🧘|冥想 瑜伽 🎨|绘画 🎬|电影 🎤|唱歌 🎧|耳机 🎹|钢琴 🎸|吉他 🎻|小提琴 🥁|鼓 🎲|骰子 🧩|拼图',
+  '花草与天气': '🌹|玫瑰 🥀|枯萎 🌺|花 🌷|郁金香 💐|花束 🌱|幼苗 🌲|松树 🌳|树 🌴|椰子树 🌵|仙人掌 🍁|枫叶 🍂|落叶 🍃|风吹叶子 🍄|蘑菇 🌾|稻谷 🌍|地球 🌕|满月 🌑|新月 🌒|月相 🌓|月相 🌔|月相 🌖|月相 🌗|月相 🌘|月相 🌟|闪耀星星 💫|流星 ☄️|彗星 🌌|银河 ⛅|多云 ☁️|云 ⛈️|雷雨 🌩️|闪电 🌨️|下雪 ☃️|雪人 ⛄|雪人 🌪️|龙卷风 🌫️|雾 💨|风 💧|水滴 ☔|雨伞'
+});
+for (const [name, entries] of Object.entries(emojiGroups)) {
+  if (typeof entries === 'string') emojiGroups[name] = entries.split(/ (?=\S+\|)/u).map(entry => entry.split('|'));
+}
 const emojiPicker = document.querySelector('#emoji-picker');
+document.body.append(emojiPicker);
 const emojiToggle = document.querySelector('#emoji-toggle');
 const emojiSearch = document.querySelector('#emoji-search');
 const emojiEditor = document.querySelector('#markdown-editor');
 let emojiCategory = '全部';
 let emojiSelection = [0, 0];
+const emojiFloating = document.querySelector('#emoji-floating');
+function emojiCaretPosition() {
+  const rect = emojiEditor.getBoundingClientRect();
+  const style = getComputedStyle(emojiEditor);
+  const mirror = document.createElement('div');
+  for (const key of ['font', 'letterSpacing', 'lineHeight', 'padding', 'border', 'boxSizing', 'wordSpacing', 'tabSize']) mirror.style[key] = style[key];
+  Object.assign(mirror.style, { position: 'fixed', visibility: 'hidden', width: `${emojiEditor.clientWidth}px`, height: 'auto', whiteSpace: 'pre-wrap', overflowWrap: 'break-word', top: '0', left: '0' });
+  mirror.textContent = emojiEditor.value.slice(0, emojiEditor.selectionStart);
+  const marker = document.createElement('span');
+  marker.textContent = '\u200b';
+  mirror.append(marker);
+  document.body.append(mirror);
+  const caret = marker.getBoundingClientRect();
+  const point = { x: rect.left + caret.left - emojiEditor.scrollLeft, y: rect.top + caret.top - emojiEditor.scrollTop + (parseFloat(style.lineHeight) || 26) };
+  mirror.remove();
+  return point;
+}
+function openEmojiPicker() {
+  emojiSelection = [emojiEditor.selectionStart, emojiEditor.selectionEnd];
+  const point = emojiCaretPosition();
+  emojiSearch.value = '';
+  emojiCategory = '全部';
+  renderEmojiPicker();
+  emojiPicker.hidden = false;
+  const width = emojiPicker.offsetWidth, height = emojiPicker.offsetHeight;
+  emojiPicker.style.left = `${Math.max(8, Math.min(point.x, window.innerWidth - width - 8))}px`;
+  emojiPicker.style.top = `${Math.max(8, Math.min(point.y + 8, window.innerHeight - height - 8))}px`;
+  emojiToggle.setAttribute('aria-expanded', 'true');
+  emojiFloating.setAttribute('aria-expanded', 'true');
+  emojiSearch.focus({ preventScroll: true });
+}
 function closeEmojiPicker(restoreFocus = false) {
   emojiPicker.hidden = true;
   emojiToggle.setAttribute('aria-expanded', 'false');
-  if (restoreFocus) emojiToggle.focus();
+  emojiFloating.setAttribute('aria-expanded', 'false');
+  if (restoreFocus) emojiEditor.focus({ preventScroll: true });
 }
 function renderEmojiPicker() {
   const query = emojiSearch.value.trim().toLowerCase();
@@ -1337,13 +1380,11 @@ function renderEmojiPicker() {
 }
 emojiToggle.addEventListener('click', () => {
   if (!emojiPicker.hidden) { closeEmojiPicker(); return; }
-  emojiSelection = [emojiEditor.selectionStart, emojiEditor.selectionEnd];
-  emojiSearch.value = '';
-  emojiCategory = '全部';
-  renderEmojiPicker();
-  emojiPicker.hidden = false;
-  emojiToggle.setAttribute('aria-expanded', 'true');
-  emojiSearch.focus({ preventScroll: true });
+  openEmojiPicker();
+});
+emojiFloating.addEventListener('click', () => emojiPicker.hidden ? openEmojiPicker() : closeEmojiPicker(true));
+emojiEditor.addEventListener('keydown', event => {
+  if ((event.ctrlKey || event.metaKey) && event.shiftKey && event.code === 'KeyE') { event.preventDefault(); openEmojiPicker(); }
 });
 emojiSearch.addEventListener('input', renderEmojiPicker);
 emojiPicker.addEventListener('click', event => {
@@ -1361,7 +1402,9 @@ emojiPicker.addEventListener('keydown', event => {
   if (event.key === 'Escape') { event.preventDefault(); closeEmojiPicker(true); }
   if (event.key === 'Enter' && event.target === emojiSearch) event.preventDefault();
 });
-document.addEventListener('pointerdown', event => { if (!emojiPicker.hidden && !emojiPicker.contains(event.target) && !emojiToggle.contains(event.target)) closeEmojiPicker(); });
+document.addEventListener('pointerdown', event => { if (!emojiPicker.hidden && !emojiPicker.contains(event.target) && !emojiToggle.contains(event.target) && !emojiFloating.contains(event.target)) closeEmojiPicker(); });
+window.addEventListener('resize', () => closeEmojiPicker());
+window.addEventListener('scroll', () => closeEmojiPicker(), { passive: true });
 window.addEventListener('hashchange', () => closeEmojiPicker());
 document.querySelector("#insert-image-button").addEventListener("click", () => document.querySelector("#editor-image-input").click());
 document.querySelector("#editor-image-input").addEventListener("change", async (event) => {
