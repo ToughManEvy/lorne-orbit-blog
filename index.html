@@ -6,7 +6,7 @@
     <meta name="theme-color" content="#f2e4cd" />
     <meta name="description" content="Lorne's orbit——浩瀚江海，立身守礼。" />
     <title>Lorne's orbit · 个人博客</title>
-    <link rel="stylesheet" href="styles.css?v=20260926-analytics" />
+    <link rel="stylesheet" href="styles.css?v=20260926-analytics-page" />
   </head>
   <body data-view="home">
     <div class="reading-progress" aria-hidden="true"></div>
@@ -28,7 +28,7 @@
             <button class="admin-comments-button" id="admin-comments-button" type="button" aria-label="查看评论通知">评论<span class="admin-comments-dot" id="admin-comments-dot" hidden></span></button>
             <a href="#write">写文章</a>
             <a href="#manage">文章管理</a>
-            <button id="admin-analytics-button" type="button">访问统计</button>
+            <a id="admin-analytics-button" href="#analytics">访问统计</a>
             <button id="legacy-migrate-button" type="button" hidden>迁移旧文章</button>
             <button id="download-backup-button" type="button">完整备份到本地</button>
             <button id="admin-logout-button" type="button">退出</button>
@@ -194,6 +194,12 @@
         <div class="manage-summary" id="manage-summary"></div>
         <div class="manage-post-list" id="manage-post-list"></div>
       </section>
+      <section class="analytics-page" aria-labelledby="analytics-title">
+        <nav class="admin-breadcrumb"><a href="#home">首页</a><span>›</span><span>访问统计</span></nav>
+        <header class="admin-page-heading"><div><p>LORNE'S ORBIT / VISITS</p><h2 id="analytics-title">访问统计</h2></div><button type="button" id="analytics-refresh">刷新数据</button></header>
+        <p class="analytics-note">北京时间 · 同一浏览器每个页面每半小时计一次，管理员访问不计入。访客按匿名浏览器估算，数据从统计功能上线后开始累计。</p>
+        <div id="analytics-content" aria-live="polite"></div>
+      </section>
     </main>
 
     <footer>
@@ -238,12 +244,6 @@
       <div class="admin-comments-list" id="admin-comments-list"></div>
     </dialog>
 
-    <dialog class="analytics-dialog" id="analytics-dialog" aria-labelledby="analytics-title">
-      <form method="dialog" class="dialog-top"><h2 id="analytics-title">访问统计</h2><button aria-label="关闭统计">×</button></form>
-      <p class="analytics-note">北京时间 · 同一浏览器每个页面每半小时计一次，管理员访问不计入。访客按匿名浏览器估算，数据从功能上线后开始累计。</p>
-      <button type="button" id="analytics-refresh">刷新数据</button>
-      <div id="analytics-content" aria-live="polite"></div>
-    </dialog>
     <dialog class="delete-dialog" id="delete-dialog" aria-labelledby="delete-dialog-title">
       <div class="delete-dialog-content">
         <p class="delete-dialog-kicker">DELETE POST</p>
@@ -266,6 +266,7 @@
     <script defer src="config.js"></script>
     <script defer src="api.js?v=20260926-analytics"></script>
     <script defer src="image-layout.js?v=20260925-image-rows"></script>
-    <script defer src="script.js?v=20260926-analytics"></script>
+    <script defer src="analytics-charts.js?v=20260926-analytics-page"></script>
+    <script defer src="script.js?v=20260926-analytics-page"></script>
   </body>
 </html>

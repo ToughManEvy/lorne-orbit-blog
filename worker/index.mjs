@@ -508,7 +508,7 @@ async function handleApi(request, env, ctx) {
   if (method === "GET" && path === "/api/admin/analytics") {
     await requireAdmin(request, env);
     const day = new Date(Date.now() + 8 * 3600000).toISOString().slice(0, 10);
-    const since = new Date(Date.now() + 8 * 3600000 - 13 * 86400000).toISOString().slice(0, 10);
+    const since = new Date(Date.now() + 8 * 3600000 - 364 * 86400000).toISOString().slice(0, 10);
     const [totals, today, trend, topPosts, counts] = await Promise.all([
       env.DB.prepare("SELECT COALESCE(SUM(views),0) AS views, COALESCE(SUM(article_views),0) AS articleViews, MIN(day) AS startedAt FROM analytics_daily").first(),
       env.DB.prepare("SELECT views, visitors, article_views AS articleViews FROM analytics_daily WHERE day = ?1").bind(day).first(),

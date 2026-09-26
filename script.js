@@ -84,7 +84,6 @@ const searchResults = document.querySelector("#search-results");
 const loginDialog = document.querySelector("#login-dialog");
 const deleteDialog = document.querySelector("#delete-dialog");
 const adminCommentsDialog = document.querySelector("#admin-comments-dialog");
-const analyticsDialog = document.querySelector('#analytics-dialog');
 let analyticsVisitor;
 function visitorIdentifier() {
   if (analyticsVisitor) return analyticsVisitor;
@@ -114,25 +113,23 @@ async function loadAnalytics() {
     const data = await blogApi.getAnalytics();
     if (!isAdmin() || requestId !== analyticsRequest) return;
     const number = value => Number(value || 0).toLocaleString('zh-CN');
-    const cards = [['今日浏览', data.today.views], ['今日访客', data.today.visitors], ['累计浏览', data.totals.views], ['累计文章阅读', data.totals.articleViews], ['文章', data.counts.posts], ['评论与回复', data.counts.comments], ['留言', data.counts.messages]];
-    const days = Array.from({ length: 14 }, (_, index) => {
-      const day = new Date(Date.parse(`${data.day}T00:00:00Z`) - (13 - index) * 86400000).toISOString().slice(0, 10);
-      return data.trend.find(item => item.day === day) || { day, views: 0, visitors: 0 };
-    });
+    const cards = [['今日浏览', data.today.views], ['今日访客', data.today.visitors], ['累计浏览', data.totals.views]];
+    const days = AnalyticsCharts.daysEnding(data.day, 14, data.trend, data.totals.startedAt);
+    const year = AnalyticsCharts.daysEnding(data.day, 365, data.trend, data.totals.startedAt);
     content.innerHTML = `<div class="analytics-cards">${cards.map(([label, value]) => `<div><span>${label}</span><strong>${number(value)}</strong></div>`).join('')}</div>
-      <h3>近 14 天访问趋势</h3><div class="analytics-table-wrap"><table><thead><tr><th>日期</th><th>浏览量</th><th>访客</th></tr></thead><tbody>${days.reverse().map(item => `<tr><td>${escapeHTML(item.day)}</td><td>${number(item.views)}</td><td>${number(item.visitors)}</td></tr>`).join('')}</tbody></table></div>
-      <h3>文章阅读排行 · 前 10 篇</h3><ol class="analytics-ranking">${data.topPosts.map(post => `<li><a href="#post-${Number(post.id)}">${escapeHTML(post.title)}</a><span>${number(post.views)} 次</span></li>`).join('') || '<li>暂无文章</li>'}</ol>`;
+      <section class="analytics-chart-panel"><div class="analytics-panel-heading"><h3>近 14 天访问趋势</h3><span>每日浏览量 · 次</span></div>${AnalyticsCharts.line(days)}<p class="analytics-note">尚未开始统计的日期不绘制数据点。</p></section>
+      <section class="analytics-heat-panel"><div class="analytics-panel-heading"><h3>一年的访问足迹</h3><span>近 365 天 · ${number(year.reduce((sum, day) => sum + day.views, 0))} 次浏览</span></div>${AnalyticsCharts.heat(year)}</section>
+      <section class="analytics-chart-panel"><h3>文章阅读排行 · 前 10 篇</h3><ol class="analytics-ranking">${data.topPosts.map(post => `<li><a href="#post-${Number(post.id)}">${escapeHTML(post.title)}</a><span>${number(post.views)} 次</span></li>`).join('') || '<li>暂无文章</li>'}</ol></section>`;
+    for (const chart of content.querySelectorAll('.heatmap-scroll, .analytics-chart-scroll')) chart.scrollLeft = chart.scrollWidth;
   } catch (error) {
     if (requestId === analyticsRequest) content.textContent = error.message || '统计加载失败，请点击刷新重试。';
   }
 }
-document.querySelector('#admin-analytics-button').addEventListener('click', () => {
-  if (!isAdmin()) return;
-  analyticsDialog.showModal();
-  void loadAnalytics();
-});
 document.querySelector('#analytics-refresh').addEventListener('click', () => void loadAnalytics());
-analyticsDialog.addEventListener('click', event => { if (event.target.closest('a')) analyticsDialog.close(); });
+for (const type of ['pointerover', 'focusin', 'click']) document.querySelector('#analytics-content').addEventListener(type, event => {
+  const day = event.target.closest('.heat-day');
+  if (day) document.querySelector('#heatmap-detail').textContent = day.getAttribute('aria-label');
+});
 const toast = document.querySelector("#toast");
 const localMessageList = document.querySelector("#local-message-list");
 const COMMENT_PROFILE_KEY = "lorne-orbit-comment-profile";
@@ -564,7 +561,6 @@ function renderAdminTools() {
   }
   if (!loggedIn) {
     analyticsRequest++;
-    analyticsDialog.close();
     document.querySelector('#analytics-content').replaceChildren();
     adminComments = [];
     document.querySelector("#admin-comments-dot").hidden = true;
@@ -813,13 +809,13 @@ async function applyView() {
   const requestedHash = location.hash.replace("#", "");
   const requested = requestedHash === "about" ? "gallery" : requestedHash;
   const isPost = requested.startsWith("post-");
-  const isAdminPage = ["write", "manage"].includes(requested);
+  const isAdminPage = ["write", "manage", "analytics"].includes(requested);
   if (isAdminPage && !isAdmin()) {
     document.body.dataset.view = "home";
     if (!loginDialog.open) loginDialog.showModal();
     return;
   }
-  const view = isPost ? "post" : (["articles", "message", "gallery", "write", "manage"].includes(requested) ? requested : "home");
+  const view = isPost ? "post" : (["articles", "message", "gallery", "write", "manage", "analytics"].includes(requested) ? requested : "home");
   document.body.dataset.view = view;
   currentPage = 1;
   document.querySelectorAll('.top-nav a, .journal-nav a').forEach((link) => {
@@ -830,6 +826,9 @@ async function applyView() {
   } else if (view === "write") {
     document.title = "撰写博客 – Lorne's orbit";
     updateMarkdownPreview();
+  } else if (view === "analytics") {
+    document.title = "访问统计 – Lorne's orbit";
+    void loadAnalytics();
   } else if (view === "manage") {
     document.title = "文章管理 – Lorne's orbit";
     renderManagePosts();
@@ -1123,7 +1122,7 @@ singlePost.addEventListener("submit", async (event) => {
   setTimeout(() => document.querySelector(`#comment-${CSS.escape(comment.id)}`)?.scrollIntoView({ behavior: "smooth", block: "center" }), 380);
 });
 
-[searchDialog, loginDialog, deleteDialog, adminCommentsDialog, analyticsDialog].forEach((dialog) => {
+[searchDialog, loginDialog, deleteDialog, adminCommentsDialog].forEach((dialog) => {
   dialog.addEventListener("click", (event) => {
     const rect = dialog.getBoundingClientRect();
     const outside = event.clientX < rect.left || event.clientX > rect.right || event.clientY < rect.top || event.clientY > rect.bottom;
