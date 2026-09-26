@@ -230,7 +230,24 @@ a { color: inherit; text-decoration: none; }
 .post-header { max-width: 900px; }
 .post-category { margin: 0 0 10px; color: var(--terracotta); font-size: 12px; }
 .post-header h1 { margin: 0; color: var(--ink); font: 700 clamp(29px, 4vw, 38px)/1.45 var(--serif); letter-spacing: .01em; }
-.post-meta { display: flex; gap: 20px; margin: 16px 0 0; color: #817c75; font-size: 12px; }
+.post-meta { display: flex; flex-wrap: wrap; gap: 12px 20px; margin: 16px 0 0; color: #817c75; font-size: 12px; }
+.analytics-dialog { width: min(860px, calc(100vw - 24px)); max-height: 88vh; overflow: auto; padding: 26px; border: 1px solid var(--line); background: var(--paper, #eddbb9); color: var(--ink); }
+.analytics-dialog::backdrop { background: #0007; }
+.analytics-dialog .dialog-top { justify-content: space-between; padding: 0; }
+.analytics-dialog .dialog-top h2 { margin: 0; }
+.analytics-note { color: #756b60; font-size: 12px; line-height: 1.8; }
+#analytics-refresh { padding: 7px 14px; cursor: pointer; border: 1px solid var(--line); color: inherit; background: transparent; }
+.analytics-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(135px, 1fr)); gap: 12px; margin: 20px 0; }
+.analytics-cards > div { padding: 16px; border: 1px solid var(--line); }
+.analytics-cards span { display: block; font-size: 12px; }
+.analytics-cards strong { display: block; margin-top: 8px; font-size: 26px; }
+.analytics-table-wrap { max-height: 265px; overflow: auto; }
+.analytics-dialog table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.analytics-dialog th, .analytics-dialog td { padding: 9px; text-align: left; border-bottom: 1px solid var(--line); }
+.analytics-ranking { padding-left: 22px; }
+.analytics-ranking li { padding: 9px 0; }
+.analytics-ranking a { color: inherit; overflow-wrap: anywhere; }
+.analytics-ranking span { display: inline-block; margin-left: 16px; color: var(--terracotta); }
 .post-body { max-width: 840px; margin-top: 48px; color: #433e39; font: 400 15px/2.05 var(--serif); }
 .post-body p { margin: 0 0 24px; }
 .post-body p, .post-body li, .post-body blockquote { white-space: break-spaces; }

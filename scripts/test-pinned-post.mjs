@@ -5,7 +5,7 @@ import { createHash } from 'node:crypto';
 import worker from '../worker/index.mjs';
 
 const db = new DatabaseSync(':memory:');
-for (const name of ['0001_initial.sql', '0002_pinned_post.sql']) {
+for (const name of ['0001_initial.sql', '0002_pinned_post.sql', '0003_analytics.sql']) {
   db.exec(readFileSync(new URL(`../worker/migrations/${name}`, import.meta.url), 'utf8'));
 }
 const wrap = (sql, values = []) => ({
@@ -57,5 +57,33 @@ assert.equal((await request('/posts/1', 'PATCH', { pinned: false })).status, 200
 const { posts } = await (await request('/posts')).json();
 assert.equal(posts[0].id, 21);
 assert.equal(posts.filter(post => post.pinned).length, 0);
+const adminToken = token;
+const visitor = 'test-visitor-123456789';
+assert.equal((await (await request('/analytics/view', 'POST', { page: 'post-1', visitor })).json()).counted, false, 'Admin traffic excluded');
+token = '';
+assert.equal((await request('/admin/analytics')).status, 401, 'Stats require admin');
+for (const page of ['home', 'post-1', 'post-1']) {
+  assert.equal((await request('/analytics/view', 'POST', { page, visitor })).status, 200);
+}
+assert.equal(db.prepare('SELECT views FROM posts WHERE id=1').get().views, 1, 'Repeat reads deduplicated');
+assert.equal((await request('/analytics/view', 'POST', { page: 'post-1', visitor: 'another-visitor-123456' })).status, 200);
+assert.equal(db.prepare('SELECT views FROM posts WHERE id=1').get().views, 2);
+db.exec('UPDATE posts SET hidden=1 WHERE id=2');
+assert.equal((await request('/analytics/view', 'POST', { page: 'post-2', visitor })).status, 404, 'Hidden post not counted for visitors');
+assert.equal((await request('/analytics/view', 'POST', { page: 'post-999', visitor })).status, 404);
+assert.equal((await request('/analytics/view', 'POST', { page: 'manage', visitor })).status, 400);
+assert.equal((await request('/analytics/view', 'POST', { page: 'home', visitor: 'bad' })).status, 400);
+const publicPosts = await (await request('/posts')).json();
+assert.equal(publicPosts.posts.find(post => post.id === 1).views, 2);
+token = adminToken;
+const stats = await (await request('/admin/analytics')).json();
+assert.equal(stats.today.visitors, 2);
+assert.equal(stats.today.views, 3);
+assert.equal(stats.totals.articleViews, 2);
+assert.equal(stats.topPosts[0].id, 1);
+assert.equal(stats.counts.posts, 21);
+assert.equal(stats.trend.length, 1);
+assert.ok(!JSON.stringify(stats).includes(visitor), 'Stats never expose anonymous IDs');
 db.close();
+console.log('PASS: analytics permissions, admin exclusion, duplicate views, distinct browsers, hidden posts, public counts, dashboard totals');
 console.log('PASS: admin-only pin, replacement, unique constraint, unpin, chronological order and ten-post pagination');

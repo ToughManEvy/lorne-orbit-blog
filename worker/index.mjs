@@ -69,6 +69,7 @@ function postFromRow(row) {
     body: row.body,
     featured: bool(row.featured),
     pinned: bool(row.pinned),
+    views: Number(row.views || 0),
     hidden: bool(row.hidden),
     isCustom: true,
     isMarkdown: bool(row.is_markdown)
@@ -475,6 +476,47 @@ async function handleApi(request, env, ctx) {
       LIMIT 200
     `).all();
     return json({ comments: (result.results || []).map(adminCommentFromRow) });
+  }
+
+  if (method === "POST" && path === "/api/analytics/view") {
+    requireWebClient(request);
+    const body = await parseJson(request, 2048);
+    const page = String(body?.page || "");
+    const match = page.match(/^post-(\d{1,16})$/);
+    if (!match && !["home", "articles", "message", "gallery"].includes(page)) throw new HttpError(400, "页面不正确");
+    const admin = await readAdmin(request, env);
+    const id = match ? articleId(match[1]) : null;
+    const post = id === null ? null : await env.DB.prepare("SELECT hidden, views FROM posts WHERE id = ?1").bind(id).first();
+    if (id !== null && (!post || (bool(post.hidden) && !admin))) throw new HttpError(404, "文章不存在");
+    if (admin) return json({ views: Number(post?.views || 0), counted: false });
+    const visitorId = String(body?.visitor || "");
+    if (!/^[a-zA-Z0-9-]{16,80}$/.test(visitorId)) throw new HttpError(400, "访客标识不正确");
+    await enforceRateLimit(env, request, "analytics", 60, 90);
+    const now = Date.now();
+    const day = new Date(now + 8 * 3600000).toISOString().slice(0, 10);
+    const cutoff = new Date(now + 8 * 3600000 - 2 * 86400000).toISOString().slice(0, 10);
+    const visitor = await sha256Hex(`${env.JWT_SECRET}:${day}:${visitorId}`);
+    const results = await env.DB.batch([
+      env.DB.prepare("DELETE FROM analytics_hits WHERE day < ?1").bind(cutoff),
+      env.DB.prepare("DELETE FROM analytics_visitors WHERE day < ?1").bind(cutoff),
+      env.DB.prepare("INSERT OR IGNORE INTO analytics_visitors(day, visitor) VALUES (?1, ?2)").bind(day, visitor),
+      env.DB.prepare("INSERT OR IGNORE INTO analytics_hits(day, visitor, page, bucket, post_id) VALUES (?1, ?2, ?3, ?4, ?5)").bind(day, visitor, page, Math.floor(now / 1800000), id)
+    ]);
+    const updated = id === null ? null : await env.DB.prepare("SELECT views FROM posts WHERE id = ?1").bind(id).first();
+    return json({ views: Number(updated?.views || 0), counted: results[3].meta.changes > 0 });
+  }
+  if (method === "GET" && path === "/api/admin/analytics") {
+    await requireAdmin(request, env);
+    const day = new Date(Date.now() + 8 * 3600000).toISOString().slice(0, 10);
+    const since = new Date(Date.now() + 8 * 3600000 - 13 * 86400000).toISOString().slice(0, 10);
+    const [totals, today, trend, topPosts, counts] = await Promise.all([
+      env.DB.prepare("SELECT COALESCE(SUM(views),0) AS views, COALESCE(SUM(article_views),0) AS articleViews, MIN(day) AS startedAt FROM analytics_daily").first(),
+      env.DB.prepare("SELECT views, visitors, article_views AS articleViews FROM analytics_daily WHERE day = ?1").bind(day).first(),
+      env.DB.prepare("SELECT day, views, visitors, article_views AS articleViews FROM analytics_daily WHERE day >= ?1 ORDER BY day").bind(since).all(),
+      env.DB.prepare("SELECT id, title, views FROM posts ORDER BY views DESC, id DESC LIMIT 10").all(),
+      env.DB.prepare("SELECT (SELECT COUNT(*) FROM posts) AS posts, (SELECT COUNT(*) FROM comments) AS comments, (SELECT COUNT(*) FROM messages) AS messages").first()
+    ]);
+    return json({ day, totals, today: today || { views: 0, visitors: 0, articleViews: 0 }, trend: trend.results, topPosts: topPosts.results, counts });
   }
 
   if (method === "GET" && path === "/api/posts") {

@@ -77,6 +77,8 @@
     deletePost: (id) => request(`/posts/${id}`, { method: "DELETE" }),
     getComments: (articleId) => request(`/posts/${articleId}/comments`),
     getAdminComments: (options) => request("/admin/comments", options),
+    getAnalytics: () => request("/admin/analytics"),
+    trackView: (page, visitor) => request("/analytics/view", { method: "POST", body: JSON.stringify({ page, visitor }) }),
     createComment: (articleId, comment) => request(`/posts/${articleId}/comments`, { method: "POST", body: JSON.stringify(comment) }),
     getMessages: (options) => request("/messages", options),
     createMessage: (message, requestId) => request("/messages", {

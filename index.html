@@ -6,7 +6,7 @@
     <meta name="theme-color" content="#f2e4cd" />
     <meta name="description" content="Lorne's orbit——浩瀚江海，立身守礼。" />
     <title>Lorne's orbit · 个人博客</title>
-    <link rel="stylesheet" href="styles.css?v=20260925-image-rows" />
+    <link rel="stylesheet" href="styles.css?v=20260926-analytics" />
   </head>
   <body data-view="home">
     <div class="reading-progress" aria-hidden="true"></div>
@@ -28,6 +28,7 @@
             <button class="admin-comments-button" id="admin-comments-button" type="button" aria-label="查看评论通知">评论<span class="admin-comments-dot" id="admin-comments-dot" hidden></span></button>
             <a href="#write">写文章</a>
             <a href="#manage">文章管理</a>
+            <button id="admin-analytics-button" type="button">访问统计</button>
             <button id="legacy-migrate-button" type="button" hidden>迁移旧文章</button>
             <button id="download-backup-button" type="button">完整备份到本地</button>
             <button id="admin-logout-button" type="button">退出</button>
@@ -237,6 +238,12 @@
       <div class="admin-comments-list" id="admin-comments-list"></div>
     </dialog>
 
+    <dialog class="analytics-dialog" id="analytics-dialog" aria-labelledby="analytics-title">
+      <form method="dialog" class="dialog-top"><h2 id="analytics-title">访问统计</h2><button aria-label="关闭统计">×</button></form>
+      <p class="analytics-note">北京时间 · 同一浏览器每个页面每半小时计一次，管理员访问不计入。访客按匿名浏览器估算，数据从功能上线后开始累计。</p>
+      <button type="button" id="analytics-refresh">刷新数据</button>
+      <div id="analytics-content" aria-live="polite"></div>
+    </dialog>
     <dialog class="delete-dialog" id="delete-dialog" aria-labelledby="delete-dialog-title">
       <div class="delete-dialog-content">
         <p class="delete-dialog-kicker">DELETE POST</p>
@@ -257,8 +264,8 @@
     <script async src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <script async src="https://cdn.jsdelivr.net/npm/dompurify/dist/purify.min.js"></script>
     <script defer src="config.js"></script>
-    <script defer src="api.js?v=20260910-comment-inbox"></script>
+    <script defer src="api.js?v=20260926-analytics"></script>
     <script defer src="image-layout.js?v=20260925-image-rows"></script>
-    <script defer src="script.js?v=20260925-image-layout"></script>
+    <script defer src="script.js?v=20260926-analytics"></script>
   </body>
 </html>

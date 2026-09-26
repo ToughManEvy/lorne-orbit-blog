@@ -84,6 +84,55 @@ const searchResults = document.querySelector("#search-results");
 const loginDialog = document.querySelector("#login-dialog");
 const deleteDialog = document.querySelector("#delete-dialog");
 const adminCommentsDialog = document.querySelector("#admin-comments-dialog");
+const analyticsDialog = document.querySelector('#analytics-dialog');
+let analyticsVisitor;
+function visitorIdentifier() {
+  if (analyticsVisitor) return analyticsVisitor;
+  try { analyticsVisitor = localStorage.getItem('blog-anonymous-visitor'); } catch {}
+  if (!/^[a-zA-Z0-9-]{16,80}$/.test(analyticsVisitor || '')) {
+    analyticsVisitor = globalThis.crypto?.randomUUID?.() || `visitor-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    try { localStorage.setItem('blog-anonymous-visitor', analyticsVisitor); } catch {}
+  }
+  return analyticsVisitor;
+}
+async function recordPageView(page, article = null) {
+  try {
+    const result = await blogApi.trackView(page, visitorIdentifier());
+    if (article) {
+      article.views = result.views;
+      const label = document.querySelector(`[data-post-views="${article.id}"]`);
+      if (label) label.textContent = `浏览 ${Number(result.views).toLocaleString('zh-CN')} 次`;
+    }
+  } catch { /* Analytics must never block reading. */ }
+}
+let analyticsRequest = 0;
+async function loadAnalytics() {
+  const requestId = ++analyticsRequest;
+  const content = document.querySelector('#analytics-content');
+  content.textContent = '正在加载统计…';
+  try {
+    const data = await blogApi.getAnalytics();
+    if (!isAdmin() || requestId !== analyticsRequest) return;
+    const number = value => Number(value || 0).toLocaleString('zh-CN');
+    const cards = [['今日浏览', data.today.views], ['今日访客', data.today.visitors], ['累计浏览', data.totals.views], ['累计文章阅读', data.totals.articleViews], ['文章', data.counts.posts], ['评论与回复', data.counts.comments], ['留言', data.counts.messages]];
+    const days = Array.from({ length: 14 }, (_, index) => {
+      const day = new Date(Date.parse(`${data.day}T00:00:00Z`) - (13 - index) * 86400000).toISOString().slice(0, 10);
+      return data.trend.find(item => item.day === day) || { day, views: 0, visitors: 0 };
+    });
+    content.innerHTML = `<div class="analytics-cards">${cards.map(([label, value]) => `<div><span>${label}</span><strong>${number(value)}</strong></div>`).join('')}</div>
+      <h3>近 14 天访问趋势</h3><div class="analytics-table-wrap"><table><thead><tr><th>日期</th><th>浏览量</th><th>访客</th></tr></thead><tbody>${days.reverse().map(item => `<tr><td>${escapeHTML(item.day)}</td><td>${number(item.views)}</td><td>${number(item.visitors)}</td></tr>`).join('')}</tbody></table></div>
+      <h3>文章阅读排行 · 前 10 篇</h3><ol class="analytics-ranking">${data.topPosts.map(post => `<li><a href="#post-${Number(post.id)}">${escapeHTML(post.title)}</a><span>${number(post.views)} 次</span></li>`).join('') || '<li>暂无文章</li>'}</ol>`;
+  } catch (error) {
+    if (requestId === analyticsRequest) content.textContent = error.message || '统计加载失败，请点击刷新重试。';
+  }
+}
+document.querySelector('#admin-analytics-button').addEventListener('click', () => {
+  if (!isAdmin()) return;
+  analyticsDialog.showModal();
+  void loadAnalytics();
+});
+document.querySelector('#analytics-refresh').addEventListener('click', () => void loadAnalytics());
+analyticsDialog.addEventListener('click', event => { if (event.target.closest('a')) analyticsDialog.close(); });
 const toast = document.querySelector("#toast");
 const localMessageList = document.querySelector("#local-message-list");
 const COMMENT_PROFILE_KEY = "lorne-orbit-comment-profile";
@@ -514,6 +563,9 @@ function renderAdminTools() {
     commentNotificationTimer = null;
   }
   if (!loggedIn) {
+    analyticsRequest++;
+    analyticsDialog.close();
+    document.querySelector('#analytics-content').replaceChildren();
     adminComments = [];
     document.querySelector("#admin-comments-dot").hidden = true;
     if (adminCommentsDialog.open) adminCommentsDialog.close();
@@ -788,6 +840,7 @@ async function applyView() {
     document.title = "Lorne's orbit · 个人博客";
     renderArticles(view === "home" ? "全部" : activeCategory);
   }
+  if (["home", "articles", "message", "gallery"].includes(view)) void recordPageView(view);
   window.scrollTo(0, 0);
   const floatingNav = document.querySelector("#floating-nav");
   floatingNav.classList.remove("show");
@@ -829,7 +882,7 @@ async function renderSinglePost(id) {
       <header class="post-header">
         <p class="post-category">${article.category}${article.hidden && isAdmin() ? ' · <span class="admin-hidden-label">仅管理员可见</span>' : ""}</p>
         <h1>${article.title}</h1>
-        <p class="post-meta"><span>Lorne's orbit</span><time>${article.date}</time></p>
+        <p class="post-meta"><span>Lorne's orbit</span><time>${article.date}</time><span data-post-views="${article.id}">浏览 ${Number(article.views || 0).toLocaleString('zh-CN')} 次</span></p>
       </header>
       <div class="post-body">
         ${article.isMarkdown ? "" : `<p class="post-lead">${article.lead}</p>`}
@@ -869,6 +922,7 @@ async function renderSinglePost(id) {
         <div id="comment-list"></div>
       </section>
     </article>`;
+  void recordPageView(`post-${article.id}`, article);
   try {
     const profile = JSON.parse(localStorage.getItem(COMMENT_PROFILE_KEY) || "null");
     if (profile && !adminCommenting) {
@@ -1069,7 +1123,7 @@ singlePost.addEventListener("submit", async (event) => {
   setTimeout(() => document.querySelector(`#comment-${CSS.escape(comment.id)}`)?.scrollIntoView({ behavior: "smooth", block: "center" }), 380);
 });
 
-[searchDialog, loginDialog, deleteDialog, adminCommentsDialog].forEach((dialog) => {
+[searchDialog, loginDialog, deleteDialog, adminCommentsDialog, analyticsDialog].forEach((dialog) => {
   dialog.addEventListener("click", (event) => {
     const rect = dialog.getBoundingClientRect();
     const outside = event.clientX < rect.left || event.clientX > rect.right || event.clientY < rect.top || event.clientY > rect.bottom;
