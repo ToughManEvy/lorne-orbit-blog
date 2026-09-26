@@ -1311,6 +1311,58 @@ document.querySelector("#markdown-editor").addEventListener("paste", async (even
     showToast("检测到剪贴板图片，但浏览器未允许读取。请授权剪贴板权限或使用“插入图片”。", 4200);
   }
 });
+const emojiGroups = {
+  '表情': [['😀','开心 笑 smile'],['😄','高兴 大笑'],['😊','微笑 害羞'],['😂','笑哭 哈哈'],['🤣','大笑 笑哭'],['🥹','感动'],['😍','喜欢 爱'],['🥰','幸福 爱心'],['😘','亲亲'],['😎','酷 墨镜'],['🤔','思考 疑问'],['😅','尴尬 汗'],['😭','哭 难过'],['🥲','苦笑'],['😴','睡觉 困'],['🥱','困 哈欠'],['😤','生气'],['😡','愤怒'],['😱','惊讶 害怕'],['🤯','震惊'],['🙃','倒脸'],['🫠','融化'],['🥳','庆祝 派对'],['🤗','拥抱'],['🤫','安静'],['🫡','敬礼']],
+  '手势与爱心': [['👍','赞 棒'],['👎','踩'],['👏','鼓掌'],['🙌','欢呼'],['🙏','感谢 祈祷'],['💪','加油 力量'],['🤝','握手'],['👋','你好 再见'],['✌️','胜利'],['👌','好的'],['🫶','爱心 比心'],['❤️','红心 爱心 heart'],['🧡','橙色 爱心'],['💛','黄色 爱心'],['💚','绿色 爱心'],['💙','蓝色 爱心'],['💜','紫色 爱心'],['🖤','黑色 爱心'],['🤍','白色 爱心'],['💔','心碎'],['💕','爱心 喜欢'],['💯','满分']],
+  '自然与生活': [['☀️','太阳 晴天'],['🌙','月亮 晚安'],['⭐','星星'],['✨','闪亮 星光'],['🌈','彩虹'],['🔥','火 热'],['❄️','雪 冬天'],['🌧️','雨'],['🌊','海 浪'],['🌸','花 樱花'],['🌻','向日葵'],['🌿','植物 叶子'],['🍀','幸运'],['🐱','猫'],['🐶','狗'],['🐼','熊猫'],['🦋','蝴蝶'],['☕','咖啡'],['🍵','茶'],['🍰','蛋糕'],['🍎','苹果'],['🍜','面条'],['🏠','家'],['🚶','散步'],['🏃','跑步']],
+  '物品与符号': [['🎉','庆祝 撒花'],['🎊','庆祝 彩带'],['🎂','生日 蛋糕'],['🎁','礼物'],['📚','读书 学习'],['✍️','写作'],['📝','笔记'],['💻','电脑 编程'],['💡','灵感 想法'],['📷','照片 摄影'],['🎵','音乐'],['🎮','游戏'],['🚀','火箭 出发'],['🎯','目标'],['🏆','奖杯 成功'],['✅','完成 正确'],['❌','错误'],['⚠️','警告 注意'],['❓','问题'],['❗','重要'],['📌','置顶 标记'],['🔗','链接'],['🔒','锁 隐私'],['⏳','等待 时间']]
+};
+const emojiPicker = document.querySelector('#emoji-picker');
+const emojiToggle = document.querySelector('#emoji-toggle');
+const emojiSearch = document.querySelector('#emoji-search');
+const emojiEditor = document.querySelector('#markdown-editor');
+let emojiCategory = '全部';
+let emojiSelection = [0, 0];
+function closeEmojiPicker(restoreFocus = false) {
+  emojiPicker.hidden = true;
+  emojiToggle.setAttribute('aria-expanded', 'false');
+  if (restoreFocus) emojiToggle.focus();
+}
+function renderEmojiPicker() {
+  const query = emojiSearch.value.trim().toLowerCase();
+  document.querySelector('#emoji-categories').innerHTML = ['全部', ...Object.keys(emojiGroups)].map(name => `<button type="button" data-emoji-category="${name}" aria-pressed="${name === emojiCategory}">${name}</button>`).join('');
+  const entries = Object.entries(emojiGroups).filter(([name]) => emojiCategory === '全部' || emojiCategory === name).flatMap(([, items]) => items).filter(([emoji, label]) => !query || `${emoji} ${label}`.toLowerCase().includes(query));
+  document.querySelector('#emoji-grid').innerHTML = entries.map(([emoji, label]) => `<button type="button" data-emoji="${emoji}" title="${label}" aria-label="${label}">${emoji}</button>`).join('');
+  document.querySelector('#emoji-empty').hidden = entries.length > 0;
+}
+emojiToggle.addEventListener('click', () => {
+  if (!emojiPicker.hidden) { closeEmojiPicker(); return; }
+  emojiSelection = [emojiEditor.selectionStart, emojiEditor.selectionEnd];
+  emojiSearch.value = '';
+  emojiCategory = '全部';
+  renderEmojiPicker();
+  emojiPicker.hidden = false;
+  emojiToggle.setAttribute('aria-expanded', 'true');
+  emojiSearch.focus({ preventScroll: true });
+});
+emojiSearch.addEventListener('input', renderEmojiPicker);
+emojiPicker.addEventListener('click', event => {
+  const category = event.target.closest('[data-emoji-category]');
+  if (category) { emojiCategory = category.dataset.emojiCategory; renderEmojiPicker(); document.querySelector(`[data-emoji-category="${emojiCategory}"]`).focus(); return; }
+  const button = event.target.closest('[data-emoji]');
+  if (!button) return;
+  emojiEditor.setRangeText(button.dataset.emoji, ...emojiSelection, 'end');
+  closeEmojiPicker();
+  emojiEditor.focus({ preventScroll: true });
+  emojiEditor.dispatchEvent(new Event('input', { bubbles: true }));
+});
+document.querySelector('#emoji-close').addEventListener('click', () => closeEmojiPicker(true));
+emojiPicker.addEventListener('keydown', event => {
+  if (event.key === 'Escape') { event.preventDefault(); closeEmojiPicker(true); }
+  if (event.key === 'Enter' && event.target === emojiSearch) event.preventDefault();
+});
+document.addEventListener('pointerdown', event => { if (!emojiPicker.hidden && !emojiPicker.contains(event.target) && !emojiToggle.contains(event.target)) closeEmojiPicker(); });
+window.addEventListener('hashchange', () => closeEmojiPicker());
 document.querySelector("#insert-image-button").addEventListener("click", () => document.querySelector("#editor-image-input").click());
 document.querySelector("#editor-image-input").addEventListener("change", async (event) => {
   const input = event.currentTarget;

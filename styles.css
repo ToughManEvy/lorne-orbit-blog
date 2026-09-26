@@ -443,6 +443,20 @@ body[data-view="manage"] .admin-manage-view { display: block; }
 .editor-toolbar button { padding: 5px 10px; border: 1px solid rgba(81,61,45,.18); color: #514840; background: rgba(248,237,218,.55); cursor: pointer; }
 .editor-toolbar button:hover { color: var(--terracotta); border-color: rgba(20,107,183,.4); }
 .editor-toolbar > span { margin-left: auto; color: #887a6d; font-size: 11px; }
+.emoji-picker { padding: 16px; border: 1px solid var(--line); background: #f2e4cd; }
+.emoji-picker[hidden] { display: none; }
+.emoji-picker-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.emoji-picker-heading label { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; font-size: 12px; }
+.emoji-picker input { max-width: 100%; width: 240px; padding: 8px 10px; border: 1px solid var(--line); background: #fff5; color: var(--ink); }
+.emoji-picker button { cursor: pointer; color: var(--ink); border: 1px solid transparent; background: transparent; }
+#emoji-close { font-size: 24px; }
+.emoji-categories { display: flex; gap: 6px; flex-wrap: wrap; margin: 12px 0; }
+.emoji-categories button { padding: 6px 10px; font-size: 12px; }
+.emoji-categories button[aria-pressed="true"] { border-color: var(--terracotta); color: var(--terracotta); }
+.emoji-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(40px, 1fr)); gap: 5px; max-height: 205px; overflow-y: auto; }
+.emoji-grid button { height: 40px; padding: 4px; font: 24px/1 "Segoe UI Emoji", "Apple Color Emoji", sans-serif; border-radius: 4px; }
+.emoji-picker button:hover, .emoji-picker button:focus-visible { border-color: var(--terracotta); background: #fff5; }
+#emoji-empty { font-size: 13px; color: var(--muted); }
 .editor-workspace { display: grid; grid-template-columns: 1fr 1fr; border: 1px solid rgba(81,61,45,.23); }
 .markdown-input-wrap,
 .markdown-preview-wrap { min-width: 0; gap: 0; }
