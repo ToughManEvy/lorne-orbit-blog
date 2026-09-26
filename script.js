@@ -108,7 +108,10 @@ let analyticsRequest = 0;
 async function loadAnalytics() {
   const requestId = ++analyticsRequest;
   const content = document.querySelector('#analytics-content');
-  content.textContent = '正在加载统计…';
+  content.setAttribute('aria-busy', 'true');
+  if (!content.querySelector('.analytics-cards')) {
+    content.innerHTML = '<p class="analytics-note" role="status">正在加载统计…</p><div class="analytics-loading-block" aria-hidden="true"></div><div class="analytics-loading-block" aria-hidden="true"></div><div class="analytics-loading-block" aria-hidden="true"></div>';
+  }
   try {
     const data = await blogApi.getAnalytics();
     if (!isAdmin() || requestId !== analyticsRequest) return;
@@ -123,6 +126,8 @@ async function loadAnalytics() {
     for (const chart of content.querySelectorAll('.heatmap-scroll, .analytics-chart-scroll')) chart.scrollLeft = chart.scrollWidth;
   } catch (error) {
     if (requestId === analyticsRequest) content.textContent = error.message || '统计加载失败，请点击刷新重试。';
+  } finally {
+    if (requestId === analyticsRequest) content.removeAttribute('aria-busy');
   }
 }
 document.querySelector('#analytics-refresh').addEventListener('click', () => void loadAnalytics());

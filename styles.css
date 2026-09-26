@@ -231,7 +231,11 @@ a { color: inherit; text-decoration: none; }
 .post-category { margin: 0 0 10px; color: var(--terracotta); font-size: 12px; }
 .post-header h1 { margin: 0; color: var(--ink); font: 700 clamp(29px, 4vw, 38px)/1.45 var(--serif); letter-spacing: .01em; }
 .post-meta { display: flex; flex-wrap: wrap; gap: 12px 20px; margin: 16px 0 0; color: #817c75; font-size: 12px; }
-.analytics-page { display: none; width: min(1200px, calc(100% - 48px)); margin: 0 auto; padding: 64px 0 96px; }
+.analytics-page { display: none; width: min(1200px, calc(100% - 48px)); margin: 0 auto; padding: 64px 0 96px; animation: reveal .45s both; }
+#analytics-content { min-height: 720px; }
+.analytics-loading-block { height: 290px; margin: 28px 0; border: 1px solid var(--line); background: rgba(255,255,255,.08); }
+.analytics-loading-block:first-of-type { height: 110px; margin-top: 32px; }
+@media (prefers-reduced-motion: reduce) { .analytics-page { animation: none; } }
 body[data-view="analytics"] .analytics-page { display: block; }
 body[data-view="analytics"] .content-shell, body[data-view="analytics"] .message-section, body[data-view="analytics"] .gallery-section, body[data-view="analytics"] .single-post, body[data-view="analytics"] .hero { display: none; }
 .analytics-note { color: #756b60; font-size: 12px; line-height: 1.8; }
