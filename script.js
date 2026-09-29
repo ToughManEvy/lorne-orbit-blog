@@ -553,6 +553,7 @@ function renderAdminTools() {
   const loggedIn = isAdmin();
   document.querySelector("#admin-login-button").hidden = loggedIn;
   document.querySelector("#admin-session-tools").hidden = !loggedIn;
+  if (loggedIn && loginDialog.open) loginDialog.close();
   const migrationButton = document.querySelector("#legacy-migrate-button");
   const migrationDone = localStorage.getItem(LEGACY_MIGRATION_KEY) === window.BLOG_CONFIG?.API_URL;
   const hasLegacyPosts = getCustomPosts().length > 0;
@@ -579,6 +580,7 @@ function updateMarkdownPreview() {
   if (!editor || !preview) return;
   preview.innerHTML = editor.value.trim() ? renderMarkdown(editor.value, true) : '<p class="preview-placeholder">预览将在这里出现。</p>';
   window.BlogImageLayout?.enhance(preview, editor, updateMarkdownPreview);
+  window.EditorDrafts?.schedule();
 }
 
 function renderManagePosts() {
@@ -615,6 +617,7 @@ async function refreshAllArticleViews() {
 }
 
 function resetPostEditor() {
+  window.EditorDrafts?.save();
   editingPostId = null;
   const form = document.querySelector("#post-editor-form");
   form.reset();
@@ -622,6 +625,7 @@ function resetPostEditor() {
   document.querySelector("#post-editor-submit").textContent = "发布博客";
   document.querySelector("#editor-cancel-button").hidden = true;
   document.querySelector("#editor-submit-hint").textContent = "文章保存到数据库，图片保存到云端对象存储。";
+  window.EditorDrafts?.begin(null);
   updateMarkdownPreview();
 }
 
@@ -631,6 +635,7 @@ function editPost(id) {
     showToast("找不到需要修改的文章。", 2600);
     return;
   }
+  window.EditorDrafts?.save();
   editingPostId = article.id;
   const form = document.querySelector("#post-editor-form");
   form.elements.title.value = article.title;
@@ -640,6 +645,7 @@ function editPost(id) {
   document.querySelector("#post-editor-submit").textContent = "保存修改";
   document.querySelector("#editor-cancel-button").hidden = false;
   document.querySelector("#editor-submit-hint").textContent = `正在修改《${article.title}》，发布时间和评论不会改变。`;
+  window.EditorDrafts?.begin(article.id);
   updateMarkdownPreview();
   location.hash = "write";
   setTimeout(() => form.elements.title.focus(), 80);
@@ -829,6 +835,11 @@ async function applyView() {
   if (view === "post") {
     await renderSinglePost(Number(requested.replace("post-", "")));
   } else if (view === "write") {
+    if (window.EditorDrafts && EditorDrafts.active === null) {
+      const lastId = EditorDrafts.lastId();
+      if (lastId !== 'new' && getAllArticleRecords().some(article => article.id === Number(lastId))) editPost(Number(lastId));
+      else resetPostEditor();
+    }
     document.title = "撰写博客 – Lorne's orbit";
     updateMarkdownPreview();
   } else if (view === "analytics") {
@@ -1428,6 +1439,8 @@ document.querySelector("#post-editor-form").addEventListener("submit", async (ev
     body
   };
   const editedPostId = editingPostId;
+  const submittedDraft = window.EditorDrafts?.values();
+  window.EditorDrafts?.save();
   let article;
   try {
     const payload = editedPostId
@@ -1438,6 +1451,7 @@ document.querySelector("#post-editor-form").addEventListener("submit", async (ev
     showToast(error.message || (editedPostId ? "文章修改失败，请稍后重试。" : "文章发布失败，请稍后重试。"), 3200);
     return;
   }
+  window.EditorDrafts?.complete(editedPostId, submittedDraft);
   resetPostEditor();
   await refreshAllArticleViews();
   location.hash = `post-${article.id}`;
